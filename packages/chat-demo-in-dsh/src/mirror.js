@@ -48,51 +48,58 @@ export function createMirror(ctx, options) {
   }
 
   /**
-   * 已经写进 DSH 的消息条数（每回合两条：提问 + 回答）。
+   * DSH 里已经出现过的消息 id（提问与回答都记）。
    *
-   * 不能数 `assistant/message`：DSH 的一个回合里可能有多条（每个 step 一条，
-   * 先思考后回答），在真实会话里会高估，导致"没有新消息"而什么也不追加。
-   * 按真人发言的 `user/message` 数 × 2 才和网页版的消息列表一一对应。
+   * 不按"第几条"推算：早期失败的追加可能留下只有提问、没有回答的半截回合，
+   * 按计数会永久错位；按 id 对齐则天然幂等，重复保存不会重复追加。
    */
-  const progressOf = (target) => {
-    let prompts = 0
+  const seenIds = (target) => {
+    const seen = new Set()
+    for (const event of target.ownEvents()) {
+      if (event.type === 'user/message') seen.add(String(event.data?.id ?? ''))
+      if (event.type === 'assistant/message') seen.add(String(event.data?.message?.id ?? ''))
+    }
+    return seen
+  }
+
+  const countTurns = (target) => {
     let turns = 0
     for (const event of target.ownEvents()) {
       if (event.type === 'turn/start') turns += 1
-      if (event.type !== 'user/message') continue
-      const source = event.data?.source ?? event.data?.message?.source
-      if (source?.kind === 'user') prompts += 1
     }
-    return { mirrored: prompts * 2, turns }
+    return turns
   }
-
   return async function mirror(session) {
     if (agentLoop === undefined || sessions === undefined) return { appended: 0, live: false, note: 'services unavailable' }
     const { session: target, note } = await ensure(session.id)
     if (target === undefined) return { appended: 0, live: false, note }
 
-    const { mirrored, turns } = progressOf(target)
-    const pending = session.messages.slice(mirrored)
-    let turn = turns + 1
+    const seen = seenIds(target)
+    let turn = countTurns(target) + 1
     let appended = 0
     let stage = 'none'
     try {
-      for (let index = 0; index < pending.length; index += 1) {
-        const message = pending[index]
-        const reply = pending[index + 1]
-        // 网页版按「用户 / 助手」成对推进；剩下的半对留给下一次保存。
-        if (message.role !== 'user' || reply?.role !== 'assistant') break
+      for (let index = 0; index < session.messages.length; index += 1) {
+        const message = session.messages[index]
+        if (message.role !== 'user') continue
+        const reply = session.messages[index + 1]
+        if (reply?.role !== 'assistant') continue
+        const userSeen = seen.has(String(message.id))
+        const replySeen = seen.has(String(reply.id))
+        if (userSeen && replySeen) continue
 
         stage = 'turn/start'
         target.append('turn/start', { turn })
 
-        stage = 'user/message'
-        target.append('user/message', {
-          id: message.id,
-          role: 'user',
-          content: [{ type: 'text', text: message.content }],
-          source: { kind: 'user' },
-        }, { surfaceOp: 'append' })
+        if (!userSeen) {
+          stage = 'user/message'
+          target.append('user/message', {
+            id: message.id,
+            role: 'user',
+            content: [{ type: 'text', text: message.content }],
+            source: { kind: 'user' },
+          }, { surfaceOp: 'append' })
+        }
 
         stage = 'request/header'
         target.append('request/header', {
@@ -123,8 +130,7 @@ export function createMirror(ctx, options) {
         target.append('turn/end', { turn, reason: { kind: 'completed' } })
 
         turn += 1
-        index += 1
-        appended += 2
+        appended += userSeen ? 1 : 2
       }
       if (appended > 0) await sessions.flush(target)
     } catch (error) {
@@ -133,5 +139,4 @@ export function createMirror(ctx, options) {
     return { appended, live: true, note }
   }
 }
-
 
