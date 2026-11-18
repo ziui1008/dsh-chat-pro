@@ -29,7 +29,23 @@ export function createMirror(ctx, options) {
     if (agentLoop === undefined || sessions === undefined) return undefined
     const existing = live(id)
     if (existing !== undefined) return existing
-    await agentLoop.create(id, { provider: 'deepseek-webchat', model: 'deepseek-flash' }, { cwd: options.cwd })
+    // 会话已存在于磁盘但当前没有 live 实例时，先 resume 载入并挂上写入器；
+    // 直接用 create 会撞上已存在的会话 id。
+    try {
+      await agentLoop.resume(ctx, {
+        resumeSessionId: id,
+        agentOptions: { provider: 'deepseek-webchat', model: 'deepseek-flash' },
+      })
+      const resumed = live(id)
+      if (resumed !== undefined) return resumed
+    } catch {
+      // 没落过盘的会话走 create。
+    }
+    try {
+      await agentLoop.create(id, { provider: 'deepseek-webchat', model: 'deepseek-flash' }, { cwd: options.cwd })
+    } catch {
+      return undefined
+    }
     return live(id)
   }
 
@@ -45,14 +61,14 @@ export function createMirror(ctx, options) {
   }
 
   return async function mirror(session) {
-    if (agentLoop === undefined || sessions === undefined) return 0
+    if (agentLoop === undefined || sessions === undefined) return { appended: 0, live: false }
     let target
     try {
       target = await ensure(session.id)
     } catch {
-      return 0
+      return { appended: 0, live: false }
     }
-    if (target === undefined) return 0
+    if (target === undefined) return { appended: 0, live: false }
 
     const { mirrored, turns } = progressOf(target)
     const pending = session.messages.slice(mirrored)
@@ -93,6 +109,7 @@ export function createMirror(ctx, options) {
     } catch {
       // 事件顺序不被接受时停在失败处；网页版自己的状态不受影响。
     }
-    return appended
+    return { appended, live: true }
   }
 }
+

@@ -294,9 +294,10 @@ export function createWebview(ctx, config, home) {
       if (method === 'PUT' && !isTitle) {
         const body = await readJson(req)
         const saved = store.save(body)
-        await mirror(saved)
-        // DSH 本来就有的会话不保留影子副本，避免两份分叉；日志才是唯一来源。
-        if (store.isDsh(saved.id)) store.remove(saved.id)
+        const result = await mirror(saved)
+        // DSH 本来就有的会话不保留影子副本：日志是唯一来源。
+        // 只有在镜像目标确实存活（内容已落盘）时才丢弃本地副本，否则保留以免丢消息。
+        if (store.isDsh(saved.id) && result.live) store.remove(saved.id)
         res.writeHead(204).end()
         return
       }
@@ -339,6 +340,7 @@ export function createWebview(ctx, config, home) {
     res.writeHead(404).end('not found')
   }
 }
+
 
 
 

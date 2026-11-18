@@ -138,10 +138,10 @@ index 91df5f9..0a812a9 100644
    <body>
      <div id="root"></div>
 diff --git a/src/services/chat/db.ts b/src/services/chat/db.ts
-index a1f58ea..2127774 100644
+index a1f58ea..9a5fa88 100644
 --- a/src/services/chat/db.ts
 +++ b/src/services/chat/db.ts
-@@ -1,250 +1,84 @@
+@@ -1,250 +1,92 @@
 -import { openDB, type DBSchema, type IDBPDatabase } from 'idb'
  import { toSessionSummary, type Session, type SessionSummary } from './types.js'
  
@@ -263,6 +263,14 @@ index a1f58ea..2127774 100644
 +    method: 'PUT',
 +    body: JSON.stringify(session),
 +  })
++  // 告诉宿主这一轮已落盘，好让 DSH 原生聊天刷新同一条会话。
++  try {
++    if (window.parent !== window) {
++      window.parent.postMessage({ type: 'chat-demo-in-dsh:saved', sessionId: session.id }, window.location.origin)
++    }
++  } catch {
++    // 通知失败不影响保存。
++  }
  }
  
 -/** 未打开的会话也可重命名，只读取该会话，原子更新详情和列表。 */
