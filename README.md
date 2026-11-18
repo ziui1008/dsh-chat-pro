@@ -27,7 +27,7 @@ DeepSeek 把网页版的前端开源了。于是有了这个插件：**用官方
 ## 安装
 
 ```bash
-dsh plugin --profile desktop add github:YOUR-NAME/chat-demo-in-dsh
+dsh plugin --profile desktop add github:YinkaiYu/chat-demo-in-dsh
 ```
 
 重启 DSH 后，侧栏面板列表里会出现「网页版」。
@@ -74,4 +74,5 @@ pwsh scripts/build-webview.ps1                                  # 重新构建�
 ## 许可
 
 MIT。界面来自 [deepseek-ai/chat-demo](https://github.com/deepseek-ai/chat-demo)（MIT）。DeepSeek 与 DeepSeek 标识归深度求索公司所有。
+
 
