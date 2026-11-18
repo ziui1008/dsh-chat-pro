@@ -28,20 +28,43 @@
 - **能力齐全**：智能搜索、深度思考、引用角标、公式、图表、深色模式
 - **能从 DSH 带对话过来**：任意会话右键「导入到网页版」，复制一份接着聊
 
-![对话与思考过程](docs/assets/webview-reply.png)
+<img src="docs/assets/webview-reply.png" width="760" alt="对话与思考过程">
 
 ## 安装
 
-1. 打开 DSH 左侧的「插件」页，点「添加插件」。
-2. 填包名 `chat-in-dsh`，或粘贴仓库地址 `https://github.com/YinkaiYu/chat-in-dsh`，点「安装」。
-3. 安装插件要写文件权限，弹出授权请求时点允许。
-4. 左侧面板列表里会出现「网页版」；如果没有，重启一次 DSH。
+**1. 打开左侧的「插件」页**
+
+<img src="docs/assets/dsh-1.png" width="760" alt="打开插件页">
+
+**2. 点右上角的「添加插件」**
+
+<img src="docs/assets/dsh-2.png" width="760" alt="点添加插件">
+
+**3. 填包名 `chat-in-dsh`（或粘贴仓库地址），点「安装」**
+
+<img src="docs/assets/dsh-3.png" width="760" alt="填写包名并安装">
+
+安装插件要写文件权限，弹出授权请求时点允许。
+
+**4. 装好后点「立即启用」**
+
+<img src="docs/assets/dsh-4.png" width="760" alt="点立即启用">
+
+左侧面板列表里会出现「网页版」；如果没有，重启一次 DSH。
 
 ## 使用
 
-点左侧的「网页版」，之后就像用网页版一样聊天。
+点左侧面板列表里的「网页版」：
 
-![在 DSH 里打开网页版面板](docs/assets/dsh-panel.png)
+<img src="docs/assets/dsh-5.png" width="760" alt="点网页版打开面板">
+
+如果想专心聊天，点左上角这个按钮把 DSH 的会话栏收起来：
+
+<img src="docs/assets/dsh-6.png" width="760" alt="收起 DSH 会话栏">
+
+收起之后就是完整的网页版界面：
+
+<img src="docs/assets/dsh-7.png" width="760" alt="网页版面板">
 
 面板里有自己的会话列表，和 DSH 的会话分开管理。
 
@@ -63,6 +86,7 @@
 这个插件基于 DeepSeek 官方开源的 [chat-demo](https://github.com/deepseek-ai/chat-demo) 开发。我们对它的改动很少：请求发往哪里、左上角的标识、以及藏起 API Key 输入框。界面、交互、请求逻辑都是官方原版。
 
 没有二次包装，也没有替你「优化」提示词——模型拿到的就是网页上那一份。
+
 
 
 
