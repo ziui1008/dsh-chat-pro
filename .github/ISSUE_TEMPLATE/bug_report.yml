@@ -1,0 +1,67 @@
+name: 问题反馈
+description: 面板打不开、界面报错、请求失败等
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        提 issue 前请先看 `/webchat/api/self-test` 的结果——它能区分是插件坏了还是上游请求不通。
+
+  - type: input
+    id: dsh-version
+    attributes:
+      label: DSH 版本
+      description: 设置 → 关于，或在 DSH 安装目录查看
+    validations:
+      required: true
+
+  - type: input
+    id: plugin-version
+    attributes:
+      label: 插件版本
+      description: 仓库 tag 或 `package.json` 里的 version
+    validations:
+      required: true
+
+  - type: dropdown
+    id: where
+    attributes:
+      label: 出问题的地方
+      options:
+        - 侧栏面板打不开 / 白屏
+        - 面板里对话失败
+        - 附件上传失败
+        - 智能搜索异常
+        - 安装或加载插件时报错
+        - 其他
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: 复现步骤
+      placeholder: |
+        1. 打开面板
+        2. 发一句「你好」
+        3. 看到……
+    validations:
+      required: true
+
+  - type: textarea
+    id: self-test
+    attributes:
+      label: 自检结果
+      description: 打开 `http://127.0.0.1:<端口>/webchat/api/self-test`，把返回的 JSON 贴在这里
+      render: json
+    validations:
+      required: false
+
+  - type: textarea
+    id: console
+    attributes:
+      label: 控制台报错
+      description: 浏览器开发者工具 Console / Network 里的第一条报错
+      render: shell
+    validations:
+      required: false
