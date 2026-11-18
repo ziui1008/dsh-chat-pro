@@ -7,6 +7,7 @@
     <a href="https://github.com/YinkaiYu/chat-in-dsh/releases"><img alt="Release" src="https://img.shields.io/github/v/release/YinkaiYu/chat-in-dsh?style=flat-square" /></a>
     <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/github/license/YinkaiYu/chat-in-dsh?style=flat-square" /></a>
     <img alt="基于官方 chat-demo" src="https://img.shields.io/badge/%E5%9F%BA%E4%BA%8E-%E5%AE%98%E6%96%B9%20chat--demo-2F6FEB?style=flat-square" />
+    <a href="https://github.com/deepseek-ai/deepseek-harness"><img alt="powered by dsh" src="https://img.shields.io/badge/powered_by-dsh-4D6BFE?style=flat-square&logo=deepseek&logoColor=white" /></a>
   </p>
   <img src="docs/assets/webview.png" width="820" alt="DSH 里的 DeepSeek 网页版面板：左侧会话列表、中间对话区、底部输入框与深度思考、智能搜索开关" />
   <p><sub>左侧面板里的 DeepSeek 网页版</sub></p>
@@ -70,6 +71,3 @@
 
 没有二次包装，也没有替你「优化」提示词——模型拿到的就是网页上那一份。
 
-<div align="center">
-  <a href="https://github.com/deepseek-ai/deepseek-harness"><img alt="powered by dsh" src="https://img.shields.io/badge/powered_by-dsh-4D6BFE?style=flat-square&logo=deepseek&logoColor=white" /></a>
-</div>
