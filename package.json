@@ -35,5 +35,8 @@
   "scripts": {
     "test": "node --test test/protocol.test.js",
     "build:webview": "pwsh ../../scripts/build-webview.ps1"
+  },
+  "engines": {
+    "node": ">=22.12"
   }
 }
