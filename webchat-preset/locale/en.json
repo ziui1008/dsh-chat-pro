@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Web chat mode",
+    "description": "Adds a 网页版 session preset that sends exactly what chat.deepseek.com sends: one identity line, no tools, no workspace context."
+  }
+}

@@ -1,0 +1,24 @@
+# Agent preset webchat: the same request shape chat.deepseek.com sends.
+#
+# Everything a normal preset carries is deliberately absent here: no tool rows
+# (so the request has no `tools` array), no agent-instructions row (no
+# AGENTS.md / CLAUDE.md injection), no time-context row (no clock snapshot
+# before the user's sentence). The persona row is `complete: true`, so the
+# assembled system prompt is exactly the web-style identity line, and
+# `includeRuntimeContext: false` drops the working-directory, sandbox,
+# approval, skill-catalog and GUI snapshots.
+- insert:
+    - id: preset-webchat
+      name: '@deepseek-ai/dsh-agent-preset'
+      config:
+        id: webchat
+        name: 网页版
+        description: 与 DeepSeek 网页版一致的对话形态：只有一行身份提示，没有工具，不夹带任何工作环境信息。
+        order: 2
+        plugins:
+          - id: persona
+            name: '@deepseek-ai/dsh-persona'
+            config:
+              complete: true
+              includeRuntimeContext: false
+              prefix: 该助手为 DeepSeek，由深度求索公司创造。
