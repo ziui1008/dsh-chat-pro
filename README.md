@@ -73,6 +73,7 @@ pwsh scripts/build-webview.ps1                                  # 重新构建�
 
 ## 许可
 
-MIT。界面来自 [deepseek-ai/chat-demo](https://github.com/deepseek-ai/chat-demo)（MIT）。DeepSeek 与 DeepSeek 标识归深度求索公司所有。
+MIT。界面来自 [deepseek-ai/chat-demo](https://github.com/deepseek-ai/chat-demo)（MIT），品牌标识归深度求索公司所有——详见 [NOTICE.md](NOTICE.md)。
+
 
 

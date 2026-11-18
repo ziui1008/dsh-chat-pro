@@ -1,11 +1,6 @@
 MIT License
 
-Copyright (c) 2026 chat-demo-in-dsh contributors
-
-The chat interface bundled under packages/chat-demo-in-dsh/webview is derived from
-deepseek-ai/chat-demo (https://github.com/deepseek-ai/chat-demo), Copyright (c) DeepSeek,
-released under the MIT License. Its license text is bundled as
-packages/chat-demo-in-dsh/webview/dist/LICENSE.
+Copyright (c) 2026 Yinkai Yu
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
