@@ -270,6 +270,50 @@ export function createWebview(ctx, config, home) {
       return
     }
 
+    // ---- 镜像自检 ----
+    if (pathname === '/webchat/api/mirror-test' && method === 'POST') {
+      const body = await readJson(req).catch(() => ({}))
+      const id = String(body.id ?? `webchat-test-${Date.now()}`)
+      const now = Date.now()
+      const sample = {
+        id,
+        title: '镜像自检',
+        createdAt: now,
+        updatedAt: now,
+        messages: [
+          { id: `${id}-u`, role: 'user', content: '镜像自检提问', files: [], createdAt: 1 },
+          {
+            id: `${id}-a`,
+            role: 'assistant',
+            createdAt: 2,
+            model: 'deepseek-flash',
+            thinking: false,
+            search: false,
+            prefix: false,
+            status: 'done',
+            stopReason: 'end_turn',
+            blocks: [{ type: 'text', text: '镜像自检回答' }],
+          },
+        ],
+      }
+      const result = await mirror(sample)
+      const readback = store.get(id)
+      const liveSession = ctx.get('sessions')?.get(id)
+      let derived = []
+      try {
+        derived = liveSession === undefined ? [] : liveSession.deriveMessages().map(message => message.role)
+      } catch (error) {
+        derived = ['derive failed: ' + String(error?.message ?? error)]
+      }
+      sendJson(res, {
+        id,
+        result,
+        readbackMessages: readback?.messages?.length ?? 0,
+        readbackRoles: readback?.messages?.map(message => message.role) ?? [],
+        derived,
+      })
+      return
+    }
     // ---- 会话桥 ----
     if (pathname === '/webchat/api/sessions' && isGet) {
       sendJson(res, store.list())
@@ -340,6 +384,8 @@ export function createWebview(ctx, config, home) {
     res.writeHead(404).end('not found')
   }
 }
+
+
 
 
 
