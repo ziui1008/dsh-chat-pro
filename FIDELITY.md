@@ -38,5 +38,8 @@
 | 2026-11-18 | `POST /webchat/anthropic/v1/messages`（前端同款 body，含 title） | 200，流正常，`title: 确认收到` |
 | 2026-11-18 | `node --test` | 8 项通过 |
 | 2026-11-18 | 镜像保存（PUT 一条新会话） | 204，DSH 侧出现 `session.v4.jsonl.zstd`，读回 title 与两条消息 |
+| 2026-11-18 | 智能搜索（前端同款 body，声明 `deepseek_web_search`） | 200，2 个 `server_tool_use`、1 个 `web_search_tool_result`（15 条）、3 个引用增量 |
+| 2026-11-18 | 客户端槽位 `plugins.tab` | 占用者 `chat-demo-in-dsh`，`active: true`（页面实测） |
+
 
 

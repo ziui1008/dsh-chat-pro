@@ -115,6 +115,7 @@ export function apply(ctx, config = {}) {
             search: config.search === true,
             language: config.language ?? '中文',
             providers: ctx.llm.listProviders(),
+            clientPath: ctx.get('clientModules')?.clientPath('chat-demo-in-dsh') ?? null,
           })
           return
         }
@@ -167,3 +168,4 @@ export function apply(ctx, config = {}) {
     },
   }), 'webchat.routes')
 }
+

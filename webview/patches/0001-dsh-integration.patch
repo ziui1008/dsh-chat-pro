@@ -11,6 +11,47 @@ index b236b4d..ffe5052 100644
    devServer,
  }: ConfigOptions = {}): Configuration => ({
    mode: dev ? 'development' : 'production',
+diff --git a/src/app/App.tsx b/src/app/App.tsx
+index d204c0f..7ebb2ac 100644
+--- a/src/app/App.tsx
++++ b/src/app/App.tsx
+@@ -14,7 +14,6 @@ import { closeSearchPanel } from '../components/search/searchPanelState.js'
+ import { SessionView } from '../components/session/SessionView.js'
+ import { MobileHeader } from '../components/session/MobileHeader.js'
+ import { Welcome } from '../components/session/Welcome.js'
+-import { ensureApiKey } from '../components/settings/settingsDialogState.js'
+ import { SettingsDialog } from '../components/settings/SettingsDialog.js'
+ import { Toast } from '../components/base/Toast.js'
+ import { showToast } from '../components/base/toastState.js'
+@@ -69,8 +68,6 @@ export const App = () => {
+ 
+   useEffect(() => {
+     void initChat()
+-    // 首次打开先在设置里输入 API Key
+-    ensureApiKey()
+   }, [])
+ 
+   return (
+diff --git a/src/components/settings/SettingsDialog.tsx b/src/components/settings/SettingsDialog.tsx
+index a74b591..643453b 100644
+--- a/src/components/settings/SettingsDialog.tsx
++++ b/src/components/settings/SettingsDialog.tsx
+@@ -103,7 +103,6 @@ const SettingsContent = () => {
+             </>
+           ) : (
+             <>
+-              <ApiKeyField editor={apiKeyEditor} />
+               <ImportHistory historyImport={historyImport} disabled={historyBusy} />
+               <ExportHistory disabled={historyBusy} />
+               <SettingCell
+@@ -121,7 +120,6 @@ const SettingsContent = () => {
+                   </Button>
+                 }
+               />
+-              {isMobile ? <ApiKeyConfirm editor={apiKeyEditor} /> : null}
+             </>
+           )}
+         </div>
 diff --git a/src/components/sider/Sider.tsx b/src/components/sider/Sider.tsx
 index 2f3cf56..fe04199 100644
 --- a/src/components/sider/Sider.tsx

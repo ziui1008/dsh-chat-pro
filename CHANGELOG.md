@@ -1,0 +1,32 @@
+# 变更记录
+
+## v0.2.0 — 2026-11-18
+
+**网页版界面**
+
+- `/webchat/` 托管官方 chat-demo 构建产物，安装即用，不需要用户 clone 或构建上游
+- 聊天与附件全部改走 `handler` 路由（`resource` 路由只接受 GET/HEAD，POST 一律 405）
+- 设置里不再出现 API Key 输入框，首次打开也不会弹密钥表单
+- 左上角换成 DeepSeek 官方标识，标题与应用名改为 `DeepSeek`
+
+**通道**
+
+- 修复 `Assistant stream chunk must be losslessly JSON-serializable`：usage 去掉 `undefined`，所有 chunk 走一次 JSON 往返
+- 智能搜索经代理实测：2 个 `server_tool_use`、1 个 `web_search_tool_result`（15 条结果）、3 个引用增量
+
+**会话**
+
+- 网页版新建的会话镜像进 DSH 事件日志（`agentLoop.create` + `session.append` + `flush`），落在最近活跃的工作区
+- 读 DSH 日志支持多帧 zstd（Node 的内置解压只解第一帧，这里按魔数切帧）
+- 按 `turn` 合并 assistant 的多条记录，丢弃 DSH 注入的运行时上下文
+
+**其他**
+
+- `/webchat/api/self-test`：入口页、静态资源、会话列表、会话详情、一次真实生成，五项一键自检
+- DSH 页签「插件 → DeepSeek」注册为 `plugins.tab`，浏览器打开 `/webchat/` 同样可用
+- 8 项单元测试
+
+## v0.1.0 — 2026-11-18
+
+- 仓库与规范（`AGENTS.md` / `UPSTREAM.md` / `FIDELITY.md`）
+- `deepseek-webchat` 模型通道：官方请求形态、`latest_reminder`、服务端工具声明、中文思考
