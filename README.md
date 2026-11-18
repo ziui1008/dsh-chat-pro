@@ -1,81 +1,48 @@
 # chat-demo-in-dsh
 
-把 [DeepSeek 官方开源的 chat-demo](https://github.com/deepseek-ai/chat-demo) 搬进 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)。
+在 DeepSeek Harness 里加一个独立的「网页版」对话面板：界面和 chat.deepseek.com 一模一样，用的是你自己在 DSH 里登录的 DeepSeek，不受官网限额影响。
 
-安装一个插件，侧栏就多一个「网页版」面板。点开就是 DeepSeek 网页版：**不用装 chat-demo，不用填 API Key，不用登录。**
+![网页版面板](docs/assets/webview.png)
 
-![网页版界面](docs/assets/webview.png)
+## 为什么需要它
 
-## 为什么做这个
+同一个模型，在 DSH 里和在网页版里，说话的味道不一样。
 
-2026 年 11 月 16 日，DeepSeek App 与网页端开始限额，大量用户转向 DeepSeek Harness。
+DSH 每次对话都要先给模型塞进几千字的系统提示词——怎么用工具、怎么改文件、怎么汇报进度——再挂上几十个工具。模型于是变成了一个「老实人」：话变短，变得周全、安全、像在写周报。写作和闲聊时这个差别最明显：网页版能写出一段有呼吸的散文，DSH 里同样的请求，交上来的常常是「结构清晰、要点完整」的说明文。
 
-他们中的许多人并不是开发者：他们要的是一个会聊天的 DeepSeek，而不是一个会改代码、会写文件、每次开口前先读六千字工程规范的智能体。对这些人来说，DSH 的默认形态太重了。
+不是模型变笨了，是它被要求去当一个干活的助手。
 
-DeepSeek 把网页版的前端开源了。于是有了这个插件：**用官方那一套界面，把网页版原样搬进 DSH。**
+这个插件做的事很简单：**在 DSH 里单开一扇窗，窗那边就是网页版本身**。它拿到的是官方那句话（「该助手为DeepSeek，由深度求索公司创造。」）、官方的服务端工具、官方的那套界面，没有任何多余的约束压在模型身上。
 
-![带思考过程的回答](docs/assets/webview-reply.png)
+## 你能得到什么
 
-## 功能
+- **原汁原味**：界面就是 DeepSeek 官方开源的那份前端，交互、排版、动效都没改
+- **不用填 API Key**：直接用 DSH 里已经登录的 DeepSeek 账户
+- **不受官网限额影响**：请求走 API，不吃网页版的额度
+- **能力齐全**：智能搜索、深度思考、引用角标、公式、图表、深色模式
+- **能从 DSH 带对话过来**：任意会话右键「导入到网页版」，复制一份接着聊
 
-- **原样界面**：chat-demo 的界面、交互一个没改，包括编辑重发、重新生成、分支切换
-- **智能搜索与深度思考**：面板里的开关就是网页版的开关，答案是带引用的
-- **完整渲染**：Markdown、代码高亮、KaTeX 公式、Mermaid 图、思考折叠、来源卡片、深浅色主题
-- **免密钥**：请求由 DSH 宿主用你已登录的 DeepSeek 账户代发，浏览器里没有 Key
-- **从 DSH 导入**：任意会话右键 →「导入到网页版」，那份对话会复制一份进来（一次性，之后各管各的）
-- **一个入口**：侧栏面板列表里的「网页版」
+![对话与思考过程](docs/assets/webview-reply.png)
 
 ## 安装
 
-```bash
-dsh plugin --profile desktop add github:YinkaiYu/chat-demo-in-dsh
+不用敲命令。把下面这段话直接发给 DSH：
+
+```
+帮我安装这个 DSH 插件：https://github.com/YinkaiYu/chat-demo-in-dsh
+装好后告诉我怎么打开。
 ```
 
-重启 DSH 后，侧栏面板列表里会出现「网页版」。
+装完重启 DSH，左侧面板列表里会多出一个「网页版」。
 
-## 它和 DSH 自己的对话是什么关系
+## 使用
 
-**没有关系，这是设计决定。**
+点左侧的「网页版」，之后就像用网页版一样聊天。
 
-网页版的提示词只有一句、工具是服务端工具；DSH 的对话带着工程规范、文件与命令工具。把它们混在一起，两边都会失真，所以我们不做互通：
+对话存在浏览器本地，换浏览器或清理站点数据会丢；重要的内容记得随手复制走。
 
-| | 网页版面板 | DSH 对话 |
-|---|---|---|
-| 存储 | 浏览器本地（上游自带） | DSH 会话日志 |
-| 提示词 | 官方那一句 | DSH 组装 |
-| 工具 | 服务端搜索 / 读链接 | 文件、命令、搜索等 |
-
-你会在两边看到两份互不相干的对话，这是刻意的。
-
-## 它怎么工作
-
-![架构](docs/assets/architecture.svg)
-
-前端仍然是官方 chat-demo，只是把请求发到宿主：宿主用 DSH 的账户凭据转发给 DeepSeek，再把流原样送回浏览器。所以浏览器里既没有 Key，也不需要你登录。
-
-## 与官方 chat-demo 的关系
-
-我们只打了 6 个文件、`+5/−7` 行的补丁：请求落点、品牌字标、隐藏 API Key 输入。存储与界面都是上游原样。
-
-- 上游基准与补丁：[UPSTREAM.md](UPSTREAM.md)
-- 已知差异：[FIDELITY.md](FIDELITY.md)（没登记的差异一律算 bug）
-
-上游 MIT，本仓库同样 MIT，保留其版权与许可。
-
-## 开发
-
-```bash
-node --test test/protocol.test.js test/dsh-import.test.js   # 单元测试
-node scripts/smoke-webview.mjs                                  # 界面冒烟（需要可调试的 Chrome）
-pwsh scripts/build-webview.ps1                                  # 重新构建前端并同步产物
-```
-
-结构与硬约束见 [AGENTS.md](AGENTS.md)。
+想把 DSH 里的对话搬过去：在左侧会话列表里右键任意一条 →「导入到网页版」。这是一次性复制，之后两边互不影响。
 
 ## 许可
 
-MIT。界面来自 [deepseek-ai/chat-demo](https://github.com/deepseek-ai/chat-demo)（MIT），品牌标识归深度求索公司所有——详见 [NOTICE.md](NOTICE.md)。
-
-
-
-
+MIT
