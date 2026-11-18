@@ -14,12 +14,12 @@
 | F1 | 🟢 | 浏览器端不发 `x-api-key`，由宿主用 DSH 账户凭据代发 | 不让密钥落到页面里，用户不用填 | **已验证** |
 | F2 | 🟢 | 会话来自 DSH 会话日志，不走 IndexedDB | 目标就是"看到的就是 DSH 的对话" | **已验证**：73 条会话、按 turn 合并 |
 | F3 | 🟡 | DSH 原生聊天界面渲染不了 `server_tool_use` / `web_search_tool_result` 块 | DSH 的消息块只有 text / reasoning / image / file / tool-call | **已验证**；网页版界面能看到完整卡片 |
-| F4 | 🟡 | 自动标题走 DSH 自己的机制 | 上游在 `message_delta` 里带回 `title` | 通道暂不请求 `title` |
+| F4 | 🟢 | 网页版用服务端 `title`（已实测拿到「确认收到」）；DSH 原生界面仍用 DSH 的标题机制 | 两条入口各自负责标题 | 网页版已通 |
 | F5 | 🟢 | `latest_reminder` 的地区为空 | DSH 没有稳定地理位置来源 | **已验证**：官方接受 |
 | F6 | 🟡 | `reasoningEffort` 映射为 `thinking` 开关 | 官方协议没有 effort 概念 | 已验证 |
 | F7 | 🟡 | DSH 的系统提示与工具 schema 在通道内被丢弃 | 保证线上请求只含官方字段 | 已验证 |
 | F8 | 🟡 | 历史里的 `latest_reminder` 不落盘，按用户消息时间重建 | DSH 不保存请求期消息 | 已验证 |
-| F9 | 🔴 | 附件 / 文件输入 | Files 端点返回 501 | 计划中 |
+| F9 | 🟢 | 附件经宿主转发到官方 Files API（multipart 原样） | 浏览器不持有密钥 | **已验证**：上传返回真实 `file_id` |
 | F10 | 🔴 | 网页版里新建的会话存在 `<DSH_HOME>/webchat/sessions`，不出现在 DSH 侧栏 | 尚未写回 DSH 事件日志 | 计划中 |
 | F11 | 🟡 | DSH 侧栏的会话在网页版是只读视图：重命名/删除不会改 DSH 日志 | 同一原因 | 计划中 |
 | F12 | 🟡 | 网页版左上角用官方标识替代「API 使用 demo」 | 品牌贴合网页版 | 已完成 |
@@ -32,5 +32,9 @@
 | 2026-11-18 | `GET /webchat/api/stream` 走 `adapter.stream()` | 146 chunks，`finish: {kind:'stop'}`，usage 正确 |
 | 2026-11-18 | `GET /webchat/api/status` | 通道 `deepseek-webchat` 已注册 |
 | 2026-11-18 | `GET /webchat/`、`/webchat/static/js/*`、`/webchat/brand-mark.svg` | 200 / 200 / 200 |
-| 2026-11-18 | `GET /webchat/api/sessions` | 73 条 DSH 会话，标题与时间正确 |
+| 2026-11-18 | `GET /webchat/api/sessions` | 61 条 DSH 会话（已过滤子代理），标题与时间正确 |
+| 2026-11-18 | `GET /webchat/api/self-test` | 5/5 通过（入口页、静态资源、会话列表、会话详情、一次真实生成） |
+| 2026-11-18 | `POST /webchat/anthropic/v1/files` | 200，返回真实 `file_id` |
+| 2026-11-18 | `POST /webchat/anthropic/v1/messages`（前端同款 body，含 title） | 200，流正常，`title: 确认收到` |
 | 2026-11-18 | `node --test` | 8 项通过 |
+
