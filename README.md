@@ -3,6 +3,7 @@
   <h1>chat-in-dsh</h1>
   <p><strong>在 DeepSeek Harness（DSH）里，用原汁原味的网页版对话。</strong></p>
   <p>
+    <a href="https://www.npmjs.com/package/chat-in-dsh"><img alt="npm" src="https://img.shields.io/npm/v/chat-in-dsh?style=flat-square" /></a>
     <a href="https://github.com/YinkaiYu/chat-in-dsh/actions/workflows/test.yml"><img alt="Test" src="https://img.shields.io/github/actions/workflow/status/YinkaiYu/chat-in-dsh/test.yml?style=flat-square" /></a>
     <a href="https://github.com/YinkaiYu/chat-in-dsh/releases"><img alt="Release" src="https://img.shields.io/github/v/release/YinkaiYu/chat-in-dsh?style=flat-square" /></a>
     <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/github/license/YinkaiYu/chat-in-dsh?style=flat-square" /></a>
@@ -32,7 +33,7 @@
 ## 安装
 
 1. 打开 DSH 左侧的「插件」页，点「添加插件」。
-2. 粘贴仓库地址 `https://github.com/YinkaiYu/chat-in-dsh`，点「安装」。
+2. 填包名 `chat-in-dsh`，或粘贴仓库地址 `https://github.com/YinkaiYu/chat-in-dsh`，点「安装」。
 3. 安装插件要写文件权限，弹出授权请求时点允许。
 4. 左侧面板列表里会出现「网页版」；如果没有，重启一次 DSH。
 
@@ -62,6 +63,7 @@
 这个插件基于 DeepSeek 官方开源的 [chat-demo](https://github.com/deepseek-ai/chat-demo) 开发。我们对它的改动很少：请求发往哪里、左上角的标识、以及藏起 API Key 输入框。界面、交互、请求逻辑都是官方原版。
 
 没有二次包装，也没有替你「优化」提示词——模型拿到的就是网页上那一份。
+
 
 
 
