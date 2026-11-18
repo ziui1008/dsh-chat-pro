@@ -139,7 +139,7 @@ window.__ModuleLoader__.load({
       return h('img', {
         src: PANEL_ICON,
         alt: 'DeepSeek',
-        style: { height: size, width: 'auto', display: 'block' },
+        style: { height: size, width: size, objectFit: 'contain', display: 'block' },
       })
     }
 
