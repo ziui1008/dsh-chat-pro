@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="880" height="380" viewBox="0 0 880 380" fill="none" font-family="system-ui, -apple-system, 'Segoe UI', 'Microsoft YaHei', sans-serif">
+  <rect width="880" height="380" fill="#F7F8FA"/>
+
+  <text x="40" y="46" font-size="18" font-weight="600" fill="#1B1F24">chat-demo-in-dsh 的一次请求</text>
+  <text x="40" y="70" font-size="13" fill="#5B6470">浏览器里是官方 chat-demo 的界面；密钥与历史都在 DSH 里。</text>
+
+  <!-- browser -->
+  <rect x="40" y="100" width="230" height="180" rx="12" fill="#FFFFFF" stroke="#D8DDE5"/>
+  <text x="60" y="130" font-size="13" font-weight="600" fill="#1B1F24">浏览器 / DSH 页签</text>
+  <rect x="60" y="144" width="190" height="34" rx="8" fill="#EEF3FF" stroke="#C9D8FF"/>
+  <text x="76" y="166" font-size="12" fill="#2A4FB0">chat-demo 前端</text>
+  <rect x="60" y="188" width="190" height="34" rx="8" fill="#F2F4F7"/>
+  <text x="76" y="210" font-size="12" fill="#5B6470">不保存 API Key</text>
+  <rect x="60" y="232" width="190" height="34" rx="8" fill="#F2F4F7"/>
+  <text x="76" y="254" font-size="12" fill="#5B6470">会话来自 DSH</text>
+
+  <!-- host -->
+  <rect x="325" y="100" width="240" height="180" rx="12" fill="#FFFFFF" stroke="#D8DDE5"/>
+  <text x="345" y="130" font-size="13" font-weight="600" fill="#1B1F24">DSH 宿主插件</text>
+  <rect x="345" y="144" width="200" height="34" rx="8" fill="#EEF7F0" stroke="#C6E5D0"/>
+  <text x="361" y="166" font-size="12" fill="#1F6B3B">/webchat 静态资源</text>
+  <rect x="345" y="188" width="200" height="34" rx="8" fill="#EEF7F0" stroke="#C6E5D0"/>
+  <text x="361" y="210" font-size="12" fill="#1F6B3B">/webchat/anthropic/v1/messages</text>
+  <rect x="345" y="232" width="200" height="34" rx="8" fill="#EEF7F0" stroke="#C6E5D0"/>
+  <text x="361" y="254" font-size="12" fill="#1F6B3B">/webchat/api/sessions</text>
+
+  <!-- deepseek -->
+  <rect x="620" y="100" width="220" height="76" rx="12" fill="#FFFFFF" stroke="#D8DDE5"/>
+  <text x="640" y="130" font-size="13" font-weight="600" fill="#1B1F24">DeepSeek API</text>
+  <text x="640" y="154" font-size="12" fill="#5B6470">官方 Messages 协议</text>
+
+  <!-- dsh sessions -->
+  <rect x="620" y="204" width="220" height="76" rx="12" fill="#FFFFFF" stroke="#D8DDE5"/>
+  <text x="640" y="234" font-size="13" font-weight="600" fill="#1B1F24">DSH 会话库</text>
+  <text x="640" y="258" font-size="12" fill="#5B6470">session.v4.jsonl.zstd</text>
+
+  <!-- arrows -->
+  <defs>
+    <marker id="a" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+      <path d="M0 0 L8 4 L0 8 z" fill="#8A94A6"/>
+    </marker>
+  </defs>
+  <line x1="270" y1="160" x2="320" y2="160" stroke="#8A94A6" stroke-width="1.5" marker-end="url(#a)"/>
+  <line x1="565" y1="160" x2="615" y2="140" stroke="#8A94A6" stroke-width="1.5" marker-end="url(#a)"/>
+  <line x1="565" y1="248" x2="615" y2="242" stroke="#8A94A6" stroke-width="1.5" marker-end="url(#a)"/>
+  <line x1="615" y1="264" x2="570" y2="270" stroke="#8A94A6" stroke-width="1.5" stroke-dasharray="4 3" marker-end="url(#a)"/>
+
+  <text x="40" y="330" font-size="12" fill="#5B6470">请求体只有：一句系统提示、latest_reminder、用户的话，以及按开关声明的服务端工具。</text>
+  <text x="40" y="352" font-size="12" fill="#5B6470">没有温度、没有工程纪律、没有工具调用往返——与 chat.deepseek.com 相同。</text>
+</svg>

@@ -1,0 +1,10 @@
+# chat-demo-in-dsh
+#
+# 一个插件，一个入口：模型路由 `deepseek-webchat`（显示为「DeepSeek 网页版」）。
+# 前端页签与浏览器直连都在 `/webchat` 下，由同一份官方请求形态驱动。
+- insert:
+    - id: chat-demo-in-dsh
+      name: chat-demo-in-dsh
+      config:
+        baseURL: ''
+        search: false

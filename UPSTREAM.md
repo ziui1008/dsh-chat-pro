@@ -49,3 +49,9 @@ $env:NODE_ENV="production"; pnpm exec rspack build -c rspack.config.ts
 ```
 
 产物 `dist/`：153 文件 / 4.19 MB，`publicPath: 'auto'` 推出相对根，可直接挂在 `/webchat/` 下（**必须以带尾斜杠的 URL 访问**）。`__API_ORIGIN__` 是编译期 DefinePlugin 注入；`createConfig({ apiOrigin })` 已导出，可用自定义 config 文件改，无需改动源码。
+
+## 追加（2026-11-18）
+
+- 补丁：[`webview/patches/0001-dsh-integration.patch`](webview/patches/0001-dsh-integration.patch)（6 文件，+49/−215）
+- 改动点：`db.ts`（IndexedDB → `/webchat/api` HTTP）、`rspack.config.ts`（`apiOrigin = '/webchat'`）、`index.html` 与 `i18n/*`（品牌）、`Sider.tsx`（官方标识）
+- 构建：`pwsh scripts/build-webview.ps1`，产物同步到 `packages/chat-demo-in-dsh/webview/dist` 并随仓库分发（安装即用，用户不必构建）

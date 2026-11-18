@@ -1,0 +1,39 @@
+{
+  "name": "chat-demo-in-dsh",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "把 DeepSeek 官方开源的 chat-demo 搬进 DeepSeek Harness：官方请求形态 + 同款聊天界面。",
+  "license": "MIT",
+  "exports": {
+    ".": "./index.js",
+    "./client": "./client.js",
+    "./locale/*.json": "./locale/*.json",
+    "./icon": "./icon.svg"
+  },
+  "files": [
+    "index.js",
+    "client.js",
+    "cordis.patch.yml",
+    "src",
+    "webview",
+    "locale",
+    "icon.svg"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "immediately": true,
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-conversation"
+      ]
+    }
+  },
+  "scripts": {
+    "test": "node --test test/protocol.test.js",
+    "build:webview": "pwsh ../../scripts/build-webview.ps1"
+  }
+}

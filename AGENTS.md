@@ -8,15 +8,23 @@
 
 上游基准版本记录在 [`UPSTREAM.md`](UPSTREAM.md)。**任何与 chat-demo 不一致的地方都必须写进 [`FIDELITY.md`](FIDELITY.md) 并说明原因**，没有例外。这条规矩比任何性能或代码风格都优先。
 
-## 三层结构
+## 三层结构（一个包内三块）
 
-| 层 | 目录 | 作用 | 与 chat-demo 的关系 |
+| 块 | 文件 | 作用 | 与 chat-demo 的关系 |
 |---|---|---|---|
-| 预设 | `packages/preset` | 声明「网页版」agent preset：一句系统提示、零客户端工具、无运行时上下文 | 对应 `SYSTEM_PROMPT` 常量 |
-| 通道 | `packages/provider` | 注册 `deepseek-webchat` 的 LlmAdapter，自己构造官方请求体 | 对应 `store.ts` 的请求体与 `toRequestMessages` |
-| 前端 | `packages/webview` | 在 DSH 里托管同款界面（同一套协议、不填 API key、直接读写 DSH 会话） | 对应 `src/` 整体 |
+| 协议 | `src/protocol.js` | 请求构造、`latest_reminder`、历史压平、SSE 读取。纯函数，通道与前端共用 | `store.ts:999-1011`、`reply.ts`、`latestReminder.ts` |
+| 通道 | `src/provider.js` | 注册 `deepseek-webchat` 模型路由，把官方流翻译成 DSH chunk | `store.ts` 的请求体 |
+| 界面 | `src/webview.js` + `webview/dist` + `client.js` | 托管官方前端、模型代理、会话桥、DSH 页签 | `src/` 整体（补丁见 `webview/patches/`） |
+| 会话桥 | `src/sessions.js` | DSH 事件日志 ⇄ 上游数据模型 | 替代 `db.ts` |
 
-打包成一个 bundle `dsh-webchat`，含三行声明；前端以 vendored 子目录引入上游代码，见 `UPSTREAM.md` 的引入方式。
+## 命令
+
+```bash
+node --test packages/chat-demo-in-dsh/test/protocol.test.js   # 单元测试
+pwsh scripts/build-webview.ps1                                 # 重建前端并同步产物
+```
+
+安装：`plugin_manager` 装 `packages/chat-demo-in-dsh`（本地目录即链接安装）。改动宿主代码后要 `remove_bundle` 再 `install_bundle` 才会重新加载。
 
 ## 硬约束
 
@@ -41,4 +49,5 @@
 
 ## 当前状态
 
-`M0`：仓库与规范。尚无实现代码。
+`v0.1.0`：协议层、通道层、网页版界面（`/webchat/`）、DSH 页签、会话桥已落地；
+附件与"网页版新建会话写回 DSH 侧栏"未做（见 `FIDELITY.md` F9/F10）。

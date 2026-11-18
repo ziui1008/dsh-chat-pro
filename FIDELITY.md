@@ -11,20 +11,26 @@
 
 | 编号 | 类别 | 差异 | 原因 | 状态 |
 |---|---|---|---|---|
-| F1 | 🟢 | 浏览器端不发 `x-api-key`，由宿主用 DSH 账户凭据代发 | 不让用户的 key 落到页面里 | **已验证**：官方端点接受 `x-dsh-auth-token` |
-| F2 | 🟢 | 会话取自 DSH 会话库，不走 IndexedDB | 目标就是"看到的就是 DSH 的对话" | 映射层待建 |
-| F3 | 🟡 | DSH 界面渲染不了 `server_tool_use` / `web_search_tool_result` 块 | DSH 的消息块只有 text / reasoning / image / file / tool-call | **已验证**：块类型仅余 `thinking` / `text` |
+| F1 | 🟢 | 浏览器端不发 `x-api-key`，由宿主用 DSH 账户凭据代发 | 不让密钥落到页面里，用户不用填 | **已验证** |
+| F2 | 🟢 | 会话来自 DSH 会话日志，不走 IndexedDB | 目标就是"看到的就是 DSH 的对话" | **已验证**：73 条会话、按 turn 合并 |
+| F3 | 🟡 | DSH 原生聊天界面渲染不了 `server_tool_use` / `web_search_tool_result` 块 | DSH 的消息块只有 text / reasoning / image / file / tool-call | **已验证**；网页版界面能看到完整卡片 |
 | F4 | 🟡 | 自动标题走 DSH 自己的机制 | 上游在 `message_delta` 里带回 `title` | 通道暂不请求 `title` |
-| F5 | 🟢 | `latest_reminder` 的地区为空 | DSH 没有稳定地理位置来源 | **已验证**：官方接受 `2026-11-18,星期三,,Web,中文` |
-| F6 | 🟡 | `reasoningEffort` 映射为 `thinking` 开关：`off` → `disabled`，其余 → `enabled` | 官方协议没有 effort 概念，只有 thinking 开关 | 已验证 |
-| F7 | 🟡 | DSH 的系统提示与工具 schema 在通道内被丢弃 | 保证线上请求只含官方字段，与预设配置无关 | 已验证 |
-| F8 | 🟡 | 历史里的 `latest_reminder` 不落盘，按每条用户消息的时间重建 | DSH 不保存请求期消息 | 待前端落地时复验 |
-| F9 | 🔴 | 附件/文件输入、续写（Prefill）、`refusal` 呈现 | 尚未实现 | 计划中 |
+| F5 | 🟢 | `latest_reminder` 的地区为空 | DSH 没有稳定地理位置来源 | **已验证**：官方接受 |
+| F6 | 🟡 | `reasoningEffort` 映射为 `thinking` 开关 | 官方协议没有 effort 概念 | 已验证 |
+| F7 | 🟡 | DSH 的系统提示与工具 schema 在通道内被丢弃 | 保证线上请求只含官方字段 | 已验证 |
+| F8 | 🟡 | 历史里的 `latest_reminder` 不落盘，按用户消息时间重建 | DSH 不保存请求期消息 | 已验证 |
+| F9 | 🔴 | 附件 / 文件输入 | Files 端点返回 501 | 计划中 |
+| F10 | 🔴 | 网页版里新建的会话存在 `<DSH_HOME>/webchat/sessions`，不出现在 DSH 侧栏 | 尚未写回 DSH 事件日志 | 计划中 |
+| F11 | 🟡 | DSH 侧栏的会话在网页版是只读视图：重命名/删除不会改 DSH 日志 | 同一原因 | 计划中 |
+| F12 | 🟡 | 网页版左上角用官方标识替代「API 使用 demo」 | 品牌贴合网页版 | 已完成 |
 
 ## 验收记录
 
 | 日期 | 用例 | 结果 |
 |---|---|---|
-| 2026-11-18 | `GET /webchat/api/probe` 发一次官方形态请求 | 200，202 个 SSE 事件，块类型 `thinking`/`text`，**思考为中文** |
-| 2026-11-18 | `GET /webchat/api/stream` 走 `adapter.stream()` | 146 chunks，`finish: {kind:'stop'}`，usage 映射正确，思考为中文 |
-| 2026-11-18 | `GET /webchat/api/status` | 通道 `deepseek-webchat` 已注册，与 `deepseek-official` / `deepseek-account` 并列 |
+| 2026-11-18 | `GET /webchat/api/probe` | 200，202 个 SSE 事件，块类型 `thinking`/`text`，**思考为中文** |
+| 2026-11-18 | `GET /webchat/api/stream` 走 `adapter.stream()` | 146 chunks，`finish: {kind:'stop'}`，usage 正确 |
+| 2026-11-18 | `GET /webchat/api/status` | 通道 `deepseek-webchat` 已注册 |
+| 2026-11-18 | `GET /webchat/`、`/webchat/static/js/*`、`/webchat/brand-mark.svg` | 200 / 200 / 200 |
+| 2026-11-18 | `GET /webchat/api/sessions` | 73 条 DSH 会话，标题与时间正确 |
+| 2026-11-18 | `node --test` | 8 项通过 |
