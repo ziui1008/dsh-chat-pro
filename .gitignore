@@ -6,3 +6,6 @@ Thumbs.db
 
 # 本地会话转储：含本次私人对话内容，入库前请确认
 evidence/session.jsonl
+
+# upstream 克隆（构建输入，不入库）
+webview/vendor/

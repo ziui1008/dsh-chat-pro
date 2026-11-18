@@ -6,8 +6,8 @@
 |---|---|
 | 仓库 | https://github.com/deepseek-ai/chat-demo |
 | 许可证 | MIT |
-| 基准快照 | `main` 分支，取于 2026-11-18 |
-| 基准 commit | **待补**：M1 首次拉取时写入完整 SHA，此后只在有意识升级时变更 |
+| 基准快照 | `main` 分支，取于 2026-11-18，tag `v0.1.1` |
+| 基准 commit | `5d5dd754ebc1948e977ddb880a9eb5aa25f37b4c`（`fix: clarify history import errors and release v0.1.1`） |
 | 关键文件 | `src/services/chat/store.ts`（请求体）、`src/services/chat/reply.ts`（消息组装）、`src/services/chat/latestReminder.ts`（元信息行）、`src/services/api/types.ts`（协议类型） |
 
 ## 引入方式
@@ -39,3 +39,13 @@
 ```
 
 不含 `temperature`。`latest_reminder` 格式：`<日期>,<星期>,<地区>,<平台>,<语言>`，如 `2026-11-18,星期二,上海,Web,中文`，只在变化时插入。
+
+## 构建（Windows）
+
+上游 `pnpm build` 脚本是 POSIX 语法（`rm -rf` + `NODE_ENV=x` 前缀），在 cmd.exe 下失败。等效命令：
+
+```powershell
+$env:NODE_ENV="production"; pnpm exec rspack build -c rspack.config.ts
+```
+
+产物 `dist/`：153 文件 / 4.19 MB，`publicPath: 'auto'` 推出相对根，可直接挂在 `/webchat/` 下（**必须以带尾斜杠的 URL 访问**）。`__API_ORIGIN__` 是编译期 DefinePlugin 注入；`createConfig({ apiOrigin })` 已导出，可用自定义 config 文件改，无需改动源码。

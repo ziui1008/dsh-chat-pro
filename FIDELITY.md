@@ -9,16 +9,22 @@
 
 ## 已登记
 
-| 编号 | 类别 | 差异 | 原因 | 影响 |
+| 编号 | 类别 | 差异 | 原因 | 状态 |
 |---|---|---|---|---|
-| F1 | 🟢 | 浏览器端不发 `x-api-key`，改由宿主用 DSH 的账户凭据代发 | 不让用户的 key 落到页面里 | 无（上游 demo 也是浏览器直连，这里只是换了鉴权的落点） |
-| F2 | 🟢 | 会话从 DSH 会话库读，不走 IndexedDB | 目标就是"看到的就是 DSH 的对话" | 需要一层 DSH 会话 ↔ 前端数据模型的映射 |
-| F3 | 🟡 | DSH 聊天界面渲染不了 `server_tool_use` / `web_search_tool_result` 块，搜索过程不显示成卡片 | DSH 的消息块类型只有 text / reasoning / image / file / tool-call | 在 DSH 界面里只看到思考与答案；搜索结果卡片只在 webview 里可见 |
-| F4 | 🟡 | 自动起标题由 DSH 自己的标题机制产生 | 上游用 `title: { enabled: true }` 在同一请求里返回标题 | 标题文案风格可能略有不同 |
-| F5 | 🟢 | `latest_reminder` 的地区可能为空 | DSH 没有稳定的地理位置来源 | 上游允许该字段为空 |
+| F1 | 🟢 | 浏览器端不发 `x-api-key`，由宿主用 DSH 账户凭据代发 | 不让用户的 key 落到页面里 | **已验证**：官方端点接受 `x-dsh-auth-token` |
+| F2 | 🟢 | 会话取自 DSH 会话库，不走 IndexedDB | 目标就是"看到的就是 DSH 的对话" | 映射层待建 |
+| F3 | 🟡 | DSH 界面渲染不了 `server_tool_use` / `web_search_tool_result` 块 | DSH 的消息块只有 text / reasoning / image / file / tool-call | **已验证**：块类型仅余 `thinking` / `text` |
+| F4 | 🟡 | 自动标题走 DSH 自己的机制 | 上游在 `message_delta` 里带回 `title` | 通道暂不请求 `title` |
+| F5 | 🟢 | `latest_reminder` 的地区为空 | DSH 没有稳定地理位置来源 | **已验证**：官方接受 `2026-11-18,星期三,,Web,中文` |
+| F6 | 🟡 | `reasoningEffort` 映射为 `thinking` 开关：`off` → `disabled`，其余 → `enabled` | 官方协议没有 effort 概念，只有 thinking 开关 | 已验证 |
+| F7 | 🟡 | DSH 的系统提示与工具 schema 在通道内被丢弃 | 保证线上请求只含官方字段，与预设配置无关 | 已验证 |
+| F8 | 🟡 | 历史里的 `latest_reminder` 不落盘，按每条用户消息的时间重建 | DSH 不保存请求期消息 | 待前端落地时复验 |
+| F9 | 🔴 | 附件/文件输入、续写（Prefill）、`refusal` 呈现 | 尚未实现 | 计划中 |
 
-## 待验证
+## 验收记录
 
-- 上游对"续写（Prefill）"的处理与 DSH 的 turn 模型是否兼容。
-- 附件（Files API）在 DSH 里走附件服务，是否需要改用上游的 `file_id` 引用。
-- `safety_check` 触发的 `stop_reason: refusal` 在 DSH 界面如何呈现。
+| 日期 | 用例 | 结果 |
+|---|---|---|
+| 2026-11-18 | `GET /webchat/api/probe` 发一次官方形态请求 | 200，202 个 SSE 事件，块类型 `thinking`/`text`，**思考为中文** |
+| 2026-11-18 | `GET /webchat/api/stream` 走 `adapter.stream()` | 146 chunks，`finish: {kind:'stop'}`，usage 映射正确，思考为中文 |
+| 2026-11-18 | `GET /webchat/api/status` | 通道 `deepseek-webchat` 已注册，与 `deepseek-official` / `deepseek-account` 并列 |

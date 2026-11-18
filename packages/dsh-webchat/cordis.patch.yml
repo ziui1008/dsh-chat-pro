@@ -1,0 +1,26 @@
+# dsh-webchat：把 DeepSeek 网页版搬进 DSH
+#
+# 三行声明对应三层结构（见仓库 AGENTS.md）：
+#   preset-webchat   预设：官方那一句系统提示，零客户端工具，无运行时上下文
+#   webchat-host     通道：官方请求形态的 LlmAdapter + /webchat HTTP 路由
+#   webchat-client   界面：DSH 里的「网页版」页签（client.js）
+- insert:
+    - id: preset-webchat
+      name: '@deepseek-ai/dsh-agent-preset'
+      config:
+        id: webchat
+        name: 网页版
+        description: 与 chat.deepseek.com 同形态的对话：一句身份提示，零客户端工具，不夹带工作环境信息。
+        order: 2
+        plugins:
+          - id: persona
+            name: '@deepseek-ai/dsh-persona'
+            config:
+              complete: true
+              includeRuntimeContext: false
+              prefix: 该助手为DeepSeek，由深度求索公司创造。
+    - id: webchat-host
+      name: dsh-webchat
+      config:
+        baseURL: ''
+        search: false
