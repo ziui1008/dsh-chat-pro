@@ -12,7 +12,7 @@ index b236b4d..ffe5052 100644
  }: ConfigOptions = {}): Configuration => ({
    mode: dev ? 'development' : 'production',
 diff --git a/src/app/App.tsx b/src/app/App.tsx
-index d204c0f..7ebb2ac 100644
+index d204c0f..fe93156 100644
 --- a/src/app/App.tsx
 +++ b/src/app/App.tsx
 @@ -14,7 +14,6 @@ import { closeSearchPanel } from '../components/search/searchPanelState.js'
@@ -23,7 +23,16 @@ index d204c0f..7ebb2ac 100644
  import { SettingsDialog } from '../components/settings/SettingsDialog.js'
  import { Toast } from '../components/base/Toast.js'
  import { showToast } from '../components/base/toastState.js'
-@@ -69,8 +68,6 @@ export const App = () => {
+@@ -29,6 +28,8 @@ import styles from './App.module.css'
+ export const App = () => {
+   const t = useTranslate()
+   const isMobile = useIsMobile()
++  // ?embed=1：DSH 会话内视图，只渲染当前会话，不显示 chat-demo 自己的会话列表。
++  const embed = new URLSearchParams(window.location.search).get('embed') === '1'
+   const locale = useSettings((state) => state.locale)
+   // 移动端侧边栏以独立抽屉管理开合状态
+   const siderCollapsed = useSettings((state) => state.siderCollapsed) && !isMobile
+@@ -69,14 +70,12 @@ export const App = () => {
  
    useEffect(() => {
      void initChat()
@@ -32,6 +41,13 @@ index d204c0f..7ebb2ac 100644
    }, [])
  
    return (
+     <>
+       <div ref={frameRef} className={styles.frame}>
+-        {isMobile ? <MobileSider /> : siderCollapsed ? null : <Sider />}
++        {isMobile ? <MobileSider /> : embed || siderCollapsed ? null : <Sider />}
+         <main className={styles.main}>
+           {saveError ? (
+             <div className={styles.saveError} role="alert">
 diff --git a/src/components/settings/SettingsDialog.tsx b/src/components/settings/SettingsDialog.tsx
 index a74b591..643453b 100644
 --- a/src/components/settings/SettingsDialog.tsx
@@ -403,3 +419,19 @@ index a1f58ea..2127774 100644
  export const reportStorageError = (action: string) => (error: unknown) => {
    // eslint-disable-next-line no-console
    console.error(`[storage] ${action} failed`, error)
+diff --git a/src/services/chat/store.ts b/src/services/chat/store.ts
+index 32e74a5..6d84de7 100644
+--- a/src/services/chat/store.ts
++++ b/src/services/chat/store.ts
+@@ -302,6 +302,11 @@ export const initChat = (): Promise<void> => {
+       const summaries = await db.loadSessionSummaries()
+       if (epoch === historyEpoch) {
+         set({ ready: true, sessions: sortSessions(summaries) })
++        // DSH 会话内视图：?session=<id> 直接打开某一条，不显示左侧列表。
++        const wanted = new URLSearchParams(window.location.search).get('session')
++        if (wanted !== null && summaries.some((item) => item.id === wanted)) {
++          selectSession(wanted)
++        }
+       }
+     } catch (error) {
+       if (epoch === historyEpoch) {
