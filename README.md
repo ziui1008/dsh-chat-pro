@@ -1,8 +1,21 @@
-# chat-in-dsh
-
-在 DeepSeek Harness 里加一个「网页版」面板，界面和 chat.deepseek.com 一致，用你在 DSH 里已登录的 DeepSeek，不受官网限额影响。
-
-![网页版面板](docs/assets/webview.png)
+<div align="center">
+  <img src="icon.svg" width="88" alt="chat-in-dsh 图标" />
+  <h1>chat-in-dsh</h1>
+  <p><strong>在 DeepSeek Harness 里，用原汁原味的网页版对话。</strong></p>
+  <p>
+    <a href="https://github.com/YinkaiYu/chat-in-dsh/actions/workflows/test.yml"><img alt="Test" src="https://img.shields.io/github/actions/workflow/status/YinkaiYu/chat-in-dsh/test.yml?style=flat-square" /></a>
+    <a href="https://github.com/YinkaiYu/chat-in-dsh/releases"><img alt="Release" src="https://img.shields.io/github/v/release/YinkaiYu/chat-in-dsh?style=flat-square" /></a>
+    <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/github/license/YinkaiYu/chat-in-dsh?style=flat-square" /></a>
+    <img alt="Node >= 22.12" src="https://img.shields.io/badge/Node-%E2%89%A522.12-5FA04E?style=flat-square" />
+  </p>
+  <p>
+    <img alt="DeepSeek Harness 插件" src="https://img.shields.io/badge/DeepSeek%20Harness-%E6%8F%92%E4%BB%B6-4A6484?style=flat-square" />
+    <img alt="无需 API Key" src="https://img.shields.io/badge/%E6%97%A0%E9%9C%80%20API%20Key-3D6DB5?style=flat-square" />
+    <img alt="基于官方 chat-demo" src="https://img.shields.io/badge/%E5%9F%BA%E4%BA%8E-%E5%AE%98%E6%96%B9%20chat--demo-2F6FEB?style=flat-square" />
+  </p>
+  <img src="docs/assets/webview.png" width="820" alt="DSH 里的 DeepSeek 网页版面板：左侧会话列表、中间对话区、底部输入框与深度思考、智能搜索开关" />
+  <p><sub>左侧面板里的 DeepSeek 网页版</sub></p>
+</div>
 
 ## 为什么需要它
 
@@ -58,5 +71,4 @@
 
 这个插件基于 DeepSeek 官方开源的 [chat-demo](https://github.com/deepseek-ai/chat-demo) 开发。我们对它的改动很少：请求发往哪里、左上角的标识、以及藏起 API Key 输入框。界面、交互、请求逻辑都是官方原版。
 
-没有二次包装，也没有替你"优化"提示词——模型拿到的就是网页上那一份。
-
+没有二次包装，也没有替你「优化」提示词——模型拿到的就是网页上那一份。
