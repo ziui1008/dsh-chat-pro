@@ -8,11 +8,13 @@
  * 所以这里用 `handler`（Node 原生 req/res）而不是 fetch 风格。
  */
 import fs from 'node:fs'
+import os from 'node:os'
 import path from 'node:path'
 import { Readable } from 'node:stream'
 import { pipeline } from 'node:stream/promises'
 import { fileURLToPath } from 'node:url'
-import { createSessionStore } from './sessions.js'
+import { createSessionStore, discoverWorkspace } from './sessions.js'
+import { createMirror } from './mirror.js'
 import { DEFAULT_BASE_URL, TOKEN_HEADER, apiRoot } from './protocol.js'
 
 /** 构建产物位置（包内自带，安装即可用）。 */
@@ -222,6 +224,11 @@ async function selfTest(ctx, config, store) {
  */
 export function createWebview(ctx, config, home) {
   const store = createSessionStore(home)
+  // 镜像会话要落在一个真实工作区下；优先 DSH 的默认工作区。
+  const preferred = discoverWorkspace(home)
+    ?? ctx.get('workingDirectory')?.defaultDirectory
+    ?? path.join(os.homedir(), 'Documents', 'deepseek-harness-default-workspace')
+  const mirror = createMirror(ctx, { cwd: fs.existsSync(preferred) ? preferred : process.cwd() })
 
   return async function handle(req, res) {
     const url = new URL(req.url ?? '/', 'http://127.0.0.1')
@@ -286,7 +293,10 @@ export function createWebview(ctx, config, home) {
       }
       if (method === 'PUT' && !isTitle) {
         const body = await readJson(req)
-        store.save(body)
+        const saved = store.save(body)
+        const before = saved.mirrored ?? 0
+        const after = await mirror(saved, before)
+        if (after !== before) store.save({ ...saved, mirrored: after })
         res.writeHead(204).end()
         return
       }
@@ -322,3 +332,6 @@ export function createWebview(ctx, config, home) {
     res.writeHead(404).end('not found')
   }
 }
+
+
+

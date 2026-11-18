@@ -157,6 +157,55 @@ export function parseSessionLog(text, fallbackId) {
   }
 }
 
+/**
+ * 找出最近有活动的会话工作目录：镜像出来的网页版会话应该跟着用户当下的工作区，
+ * 而不是落在进程当前目录那一格。
+ */
+export function discoverWorkspace(home) {
+  const root = path.join(home, 'sessions')
+  const counts = new Map()
+  let workspaces = []
+  try {
+    workspaces = fs.readdirSync(root, { withFileTypes: true }).filter(entry => entry.isDirectory())
+  } catch {
+    return undefined
+  }
+  for (const workspace of workspaces) {
+    const dir = path.join(root, workspace.name)
+    let entries = []
+    try {
+      entries = fs.readdirSync(dir, { withFileTypes: true }).filter(entry => entry.isDirectory())
+    } catch {
+      continue
+    }
+    for (const entry of entries.slice(0, 40)) {
+      const file = path.join(dir, entry.name, 'session.v4.jsonl.zstd')
+      if (!fs.existsSync(file)) continue
+      try {
+        const buffer = fs.readFileSync(file)
+        const second = buffer.indexOf(ZSTD_MAGIC, buffer.indexOf(ZSTD_MAGIC) + ZSTD_MAGIC.length)
+        const frame = second === -1 ? buffer : buffer.subarray(0, second)
+        const text = zlib.zstdDecompressSync(frame).toString('utf8')
+        const header = JSON.parse(text.split(/\r?\n/u)[0])
+        if (typeof header.cwd === 'string' && header.cwd.length > 0) {
+          counts.set(header.cwd, Math.max(counts.get(header.cwd) ?? 0, fs.statSync(file).mtimeMs))
+        }
+      } catch {
+        // 跳过读不出来的会话。
+      }
+    }
+  }
+  let best
+  let bestTime = -1
+  for (const [cwd, time] of counts) {
+    if (time > bestTime) {
+      best = cwd
+      bestTime = time
+    }
+  }
+  return best
+}
+
 /** 会话仓库：DSH 日志（只读）+ 网页版自建会话（可写）。 */
 export function createSessionStore(home) {
   const dshRoot = path.join(home, 'sessions')
@@ -268,3 +317,4 @@ export function createSessionStore(home) {
     },
   }
 }
+

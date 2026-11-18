@@ -20,8 +20,8 @@
 | F7 | 🟡 | DSH 的系统提示与工具 schema 在通道内被丢弃 | 保证线上请求只含官方字段 | 已验证 |
 | F8 | 🟡 | 历史里的 `latest_reminder` 不落盘，按用户消息时间重建 | DSH 不保存请求期消息 | 已验证 |
 | F9 | 🟢 | 附件经宿主转发到官方 Files API（multipart 原样） | 浏览器不持有密钥 | **已验证**：上传返回真实 `file_id` |
-| F10 | 🔴 | 网页版里新建的会话存在 `<DSH_HOME>/webchat/sessions`，不出现在 DSH 侧栏 | 尚未写回 DSH 事件日志 | 计划中 |
-| F11 | 🟡 | DSH 侧栏的会话在网页版是只读视图：重命名/删除不会改 DSH 日志 | 同一原因 | 计划中 |
+| F10 | 🟢 | 网页版新建的会话会镜像成 DSH 会话（`agentLoop.create` + `session.append` + `flush`） | 让两边的对话真正是同一份 | **已验证**：日志落在当前工作区，读回正常 |
+| F11 | 🟡 | 在网页版重命名或删除 DSH 原有会话，不会改动 DSH 日志 | 日志由 DSH 写入，插件不重写已有会话 | 保留 |
 | F12 | 🟡 | 网页版左上角用官方标识替代「API 使用 demo」 | 品牌贴合网页版 | 已完成 |
 
 ## 验收记录
@@ -37,4 +37,6 @@
 | 2026-11-18 | `POST /webchat/anthropic/v1/files` | 200，返回真实 `file_id` |
 | 2026-11-18 | `POST /webchat/anthropic/v1/messages`（前端同款 body，含 title） | 200，流正常，`title: 确认收到` |
 | 2026-11-18 | `node --test` | 8 项通过 |
+| 2026-11-18 | 镜像保存（PUT 一条新会话） | 204，DSH 侧出现 `session.v4.jsonl.zstd`，读回 title 与两条消息 |
+
 
