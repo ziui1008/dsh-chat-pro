@@ -317,7 +317,7 @@ export function createWebview(ctx, config, home) {
       return
     }
     if (pathname === '/webchat/brand-mark.svg') {
-      await sendFile(res, path.join(DIST, '..', 'logo-mark-light.svg'))
+      await sendFile(res, path.join(DIST, '..', 'brand-mark.svg'))
       return
     }
     if (pathname.startsWith('/webchat/')) {
@@ -332,6 +332,7 @@ export function createWebview(ctx, config, home) {
     res.writeHead(404).end('not found')
   }
 }
+
 
 
 

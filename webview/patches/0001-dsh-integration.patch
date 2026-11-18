@@ -53,7 +53,7 @@ index a74b591..643453b 100644
            )}
          </div>
 diff --git a/src/components/sider/Sider.tsx b/src/components/sider/Sider.tsx
-index 2f3cf56..fe04199 100644
+index 2f3cf56..674cd01 100644
 --- a/src/components/sider/Sider.tsx
 +++ b/src/components/sider/Sider.tsx
 @@ -52,7 +52,7 @@ export const Sider = ({ mobile = false }: { mobile?: boolean }) => {
@@ -61,12 +61,12 @@ index 2f3cf56..fe04199 100644
      <div className={clsx(styles.sider, mobile && styles.mobile)}>
        <div className={styles.top}>
 -        <div className={styles.appName}>{t('appName')}</div>
-+        <div className={styles.appName}><img src="/webchat/brand-mark.svg" alt="DeepSeek" style={{ height: 20, width: 20, marginRight: 6 }} />{t('appName')}</div>
++        <div className={styles.appName}><img src="/webchat/brand-mark.svg" alt="" style={{ height: 19, width: 26, marginRight: 8 }} /><span style={{ color: '#4D6BFE', fontWeight: 600, letterSpacing: '-0.2px' }}>{t('appName')}</span></div>
          <IconButton
            size="m"
            icon={<IconPanelLeftOutline16 />}
 diff --git a/src/i18n/en.ts b/src/i18n/en.ts
-index 2d49027..97dbede 100644
+index 2d49027..06b00d7 100644
 --- a/src/i18n/en.ts
 +++ b/src/i18n/en.ts
 @@ -14,7 +14,7 @@ export const en = {
@@ -74,12 +74,12 @@ index 2d49027..97dbede 100644
    sessionDeleteFailed: 'Unable to delete this chat. Please try again.',
    settings: 'Settings',
 -  appName: 'API usage demo',
-+  appName: 'DeepSeek',
++  appName: 'deepseek',
    deleteSessionModalContentTitle: 'Delete chat?',
    deleteSessionWithFilesDescription:
      'This chat and its uploaded files will be permanently deleted and cannot be recovered. Delete this chat?',
 diff --git a/src/i18n/zh.ts b/src/i18n/zh.ts
-index d99f058..8202835 100644
+index d99f058..35da16d 100644
 --- a/src/i18n/zh.ts
 +++ b/src/i18n/zh.ts
 @@ -11,7 +11,7 @@ export const zh = {
@@ -87,7 +87,7 @@ index d99f058..8202835 100644
    sessionDeleteFailed: '删除对话失败，请重试',
    settings: '设置',
 -  appName: 'API 使用 demo',
-+  appName: 'DeepSeek',
++  appName: 'deepseek',
    deleteSessionModalContentTitle: '永久删除对话',
    deleteSessionWithFilesDescription: '删除后，该对话及其中上传的文件将不可恢复。确认删除吗？',
    cancel: '取消',
