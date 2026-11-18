@@ -15,13 +15,14 @@
 | 宿主 | `index.js` | 注册 `/webchat` 前缀路由（**必须用 `handler`，`resource` 只接 GET/HEAD**） |
 | 路由 | `src/webview.js` | 静态产物、`/webchat/api/*` 自检、Messages / Files 转发（用 DSH 账户凭据代发） |
 | 约定 | `src/protocol.js` | 端点根、令牌头、路径越界判断（纯函数，有测试） |
+| 导入 | `src/dsh-import.js` | 只读解析 DSH 会话日志 → chat-demo 格式；暂存与确认（纯函数，有测试） |
 | 界面 | `client.js` | 只注册左侧面板两个槽位：`main`（key=`chat-demo`）+ `sidebar.panellist`（同 id） |
 | 前端 | `webview/dist` | 官方 chat-demo 构建产物，随包分发 |
 
 ## 命令
 
 ```bash
-node --test test/protocol.test.js
+node --test test/protocol.test.js test/dsh-import.test.js
 pwsh scripts/build-webview.ps1
 ```
 
@@ -45,4 +46,6 @@ pwsh scripts/build-webview.ps1
 - `GET /webchat/`：入口页含引导脚本；`GET /webchat/static/js/main.*.js`：200。
 - `GET /webchat/api/self-test`：入口页、静态资源、一次真实生成，三项全绿。
 - 槽位：`main` 与 `sidebar.panellist` 都有 `chat-demo`，`conversation.view` 里**不应**出现它。
+- 导入：会话右键 →「导入到网页版」→ `GET /webchat/api/import/pending` 返回该会话 → 网页版启动时写入并 `ack`。
+
 

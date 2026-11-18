@@ -1,6 +1,6 @@
 {
   "name": "chat-demo-in-dsh",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "private": true,
   "type": "module",
   "description": "把 DeepSeek 官方开源的 chat-demo 搬进 DeepSeek Harness：左侧面板一个入口，免密钥，用 DSH 的账户凭据代发。",

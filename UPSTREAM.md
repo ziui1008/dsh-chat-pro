@@ -10,7 +10,7 @@
 
 ## 我们改了什么
 
-一份补丁，六个文件，`+5/−7` 行：[`webview/patches/0001-dsh-integration.patch`](webview/patches/0001-dsh-integration.patch)
+一份补丁，七个文件，`+28/−7` 行：[`webview/patches/0001-dsh-integration.patch`](webview/patches/0001-dsh-integration.patch)
 
 | 文件 | 改动 |
 |---|---|
@@ -19,6 +19,7 @@
 | `src/i18n/{zh,en}.ts` | 应用名改为 `deepseek` |
 | `src/components/sider/Sider.tsx` | 左上角换成官方字标 |
 | `src/components/settings/SettingsDialog.tsx` | 去掉 API Key 输入框（密钥在宿主） |
+| `src/services/chat/store.ts` | 启动时把 DSH 暂存的导入会话写进本地存储 |
 
 存储、请求构造、界面组件都没有动。
 
@@ -37,3 +38,4 @@ pwsh scripts/build-webview.ps1
 ```
 
 产物 153 个文件、约 4.2 MB，`publicPath: 'auto'` 推导出相对根，因此可以挂在 `/webchat/` 下（访问地址必须带尾斜杠）。产物随仓库分发，安装者不需要自己构建。
+

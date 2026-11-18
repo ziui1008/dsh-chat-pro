@@ -15,6 +15,7 @@ import { Readable } from 'node:stream'
 import { pipeline } from 'node:stream/promises'
 import { fileURLToPath } from 'node:url'
 import { DEFAULT_BASE_URL, TOKEN_HEADER, apiRoot, isInside } from './protocol.js'
+import { ackPending, listPending, readDshSession, stageImport } from './dsh-import.js'
 
 /** 构建产物位置（包内自带，安装即可用）。 */
 const DIST = fileURLToPath(new URL('../webview/dist/', import.meta.url))
@@ -71,6 +72,12 @@ export async function readBody(req) {
   return Buffer.concat(chunks)
 }
 
+/** 读取并解析 JSON 请求体。 */
+async function readJsonBody(req) {
+  const raw = await readBody(req)
+  if (raw.length === 0) return {}
+  return JSON.parse(raw.toString('utf8'))
+}
 /** 读取并缓存注入了引导脚本的入口页。 */
 let cachedIndex
 
@@ -201,14 +208,38 @@ async function selfTest(ctx, config) {
  * 建立请求处理器（Node 原生 req/res）。
  * @param {import('@deepseek-ai/cordis').Context} ctx
  * @param {{ baseURL?: string }} config
+ * @param {string} home DSH_HOME，用来读 DSH 会话与存放待导入暂存
  */
-export function createWebview(ctx, config) {
+export function createWebview(ctx, config, home) {
   return async function handle(req, res) {
     const url = new URL(req.url ?? '/', 'http://127.0.0.1')
     const { pathname } = url
     const method = (req.method ?? 'GET').toUpperCase()
     const isGet = method === 'GET' || method === 'HEAD'
 
+    // ---- 从 DSH 一次性导入 ----
+    if (pathname === '/webchat/api/import/stage' && method === 'POST') {
+      const body = await readJsonBody(req)
+      const sessionId = String(body.sessionId ?? '')
+      const session = readDshSession(home, sessionId)
+      if (session === undefined) {
+        sendJson(res, { ok: false, error: '找不到这条会话，或它没有可导入的内容' }, 404)
+        return
+      }
+      stageImport(home, session)
+      sendJson(res, { ok: true, id: session.id, title: session.title, messages: session.messages.length })
+      return
+    }
+    if (pathname === '/webchat/api/import/pending' && isGet) {
+      sendJson(res, listPending(home))
+      return
+    }
+    if (pathname === '/webchat/api/import/ack' && method === 'POST') {
+      const body = await readJsonBody(req)
+      const ids = Array.isArray(body.ids) ? body.ids.map(String) : []
+      sendJson(res, { removed: ackPending(home, ids) })
+      return
+    }
     if (pathname === '/webchat/api/self-test' && isGet) {
       try {
         sendJson(res, await selfTest(ctx, config))
@@ -273,3 +304,6 @@ export function createWebview(ctx, config) {
     res.writeHead(404).end('not found')
   }
 }
+
+
+

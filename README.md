@@ -22,6 +22,7 @@ DeepSeek 把网页版的前端开源了。于是有了这个插件：**用官方
 - **智能搜索与深度思考**：面板里的开关就是网页版的开关，答案是带引用的
 - **完整渲染**：Markdown、代码高亮、KaTeX 公式、Mermaid 图、思考折叠、来源卡片、深浅色主题
 - **免密钥**：请求由 DSH 宿主用你已登录的 DeepSeek 账户代发，浏览器里没有 Key
+- **从 DSH 导入**：任意会话右键 →「导入到网页版」，那份对话会复制一份进来（一次性，之后各管各的）
 - **一个入口**：侧栏面板列表里的「网页版」
 
 ## 安装
@@ -64,7 +65,7 @@ dsh plugin --profile desktop add github:YinkaiYu/chat-demo-in-dsh
 ## 开发
 
 ```bash
-node --test test/protocol.test.js   # 单元测试
+node --test test/protocol.test.js test/dsh-import.test.js   # 单元测试
 node scripts/smoke-webview.mjs                                  # 界面冒烟（需要可调试的 Chrome）
 pwsh scripts/build-webview.ps1                                  # 重新构建前端并同步产物
 ```
@@ -74,6 +75,7 @@ pwsh scripts/build-webview.ps1                                  # 重新构建�
 ## 许可
 
 MIT。界面来自 [deepseek-ai/chat-demo](https://github.com/deepseek-ai/chat-demo)（MIT），品牌标识归深度求索公司所有——详见 [NOTICE.md](NOTICE.md)。
+
 
 
 

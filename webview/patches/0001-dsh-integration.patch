@@ -83,3 +83,44 @@ index 91df5f9..0a812a9 100644
    </head>
    <body>
      <div id="root"></div>
+diff --git a/src/services/chat/store.ts b/src/services/chat/store.ts
+index 32e74a5..b3ad2fd 100644
+--- a/src/services/chat/store.ts
++++ b/src/services/chat/store.ts
+@@ -288,6 +288,28 @@ const settleInterrupted = (session: Session): Session => {
+   }
+ }
+ 
++/**
++ * 把 DSH 侧点过「导入到网页版」的会话写进本地存储。
++ * 这是一次性复制：导入完两边各管各的。
++ */
++const importPendingDsh = async (): Promise<void> => {
++  try {
++    const response = await fetch('/webchat/api/import/pending')
++    if (!response.ok) return
++    const pending = (await response.json()) as Session[]
++    if (!Array.isArray(pending) || pending.length === 0) return
++    for (const session of pending) {
++      await db.saveSession(session)
++    }
++    await fetch('/webchat/api/import/ack', {
++      method: 'POST',
++      headers: { 'content-type': 'application/json' },
++      body: JSON.stringify({ ids: pending.map((session) => session.id) }),
++    })
++  } catch {
++    // 导入失败不影响正常启动。
++  }
++}
+ export const initChat = (): Promise<void> => {
+   if (get().ready) {
+     return Promise.resolve()
+@@ -299,6 +321,7 @@ export const initChat = (): Promise<void> => {
+   set({ initError: false })
+   initTask = (async () => {
+     try {
++      await importPendingDsh()
+       const summaries = await db.loadSessionSummaries()
+       if (epoch === historyEpoch) {
+         set({ ready: true, sessions: sortSessions(summaries) })

@@ -1,8 +1,8 @@
 /**
- * 浏览器半边：左侧面板入口。
+ * 浏览器半边。
  *
- * 只有一个入口 —— 侧栏面板列表里的「网页版」，点开就是完整的 chat-demo。
- * 它在会话内部不出现、也不提供模型路由：网页版与 DSH 会话是两套东西，不做假装互通。
+ * 一个入口：左侧面板列表里的「网页版」。
+ * 另外在会话的右键菜单里加一行「导入到网页版」——一次性复制，复制完两边各管各的。
  */
 window.__ModuleLoader__.load({
   id: 'chat-demo-in-dsh',
@@ -13,16 +13,31 @@ window.__ModuleLoader__.load({
     // 官方字标（小鲸鱼）内联为 data URI：侧栏图标不依赖任何额外请求。
     const PANEL_ICON = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNyIgaGVpZ2h0PSIyMCIgdmlld0JveD0iMC4xNjMgMS43NSAyNi42MzQgMTkuNiIgZmlsbD0ibm9uZSIgcm9sZT0iaW1nIiBhcmlhLWxhYmVsPSJEZWVwU2VlayI+CiAgPHBhdGggZD0iTTI2LjUxNzQgMy4zOTQ3MUMyNi4yMzUgMy4yNTY3IDI2LjExMzcgMy41MjAwNiAyNS45NDg3IDMuNjUzNDZDMjUuODkyMyAzLjY5NjU5IDI1Ljg0NDYgMy43NTI5NCAyNS43OTY5IDMuODA0NjlDMjUuMzg0NiA0LjI0NTE2IDI0LjkwMjcgNC41MzQzOSAyNC4yNzM3IDQuNDk5ODlDMjMuMzUzNiA0LjQ0ODE0IDIyLjU2ODIgNC43MzczNyAyMS44NzM1IDUuNDQxMTlDMjEuNzI1OCA0LjU3MzQ5IDIxLjIzNTMgNC4wNTU0IDIwLjQ4ODkgMy43MjMwNEMyMC4wOTg1IDMuNTUwNTQgMTkuNzAzNCAzLjM3NzQ2IDE5LjQyOTcgMy4wMDE5N0MxOS4yMzg4IDIuNzM0NTkgMTkuMTg2NSAyLjQzNjczIDE5LjA5MSAyLjE0Mjg5QzE5LjAzMDEgMS45NjU3OSAxOC45Njk3IDEuNzg0NjYgMTguNzY1NiAxLjc1NDE4QzE4LjU0NDIgMS43MTk2OCAxOC40NTc0IDEuOTA1NDEgMTguMzcwNSAyLjA2MDY3QzE4LjAyMzIgMi42OTU0OSAxNy44ODg3IDMuMzk0NzEgMTcuOTAxOSA0LjEwMzEzQzE3LjkzMjQgNS42OTY1IDE4LjYwNTEgNi45NjU1NiAxOS45NDIxIDcuODY4MzRDMjAuMDkzOSA3Ljk3MTg0IDIwLjEzMyA4LjA3NTM1IDIwLjA4NTIgOC4yMjY1OEMxOS45OTM4IDguNTM3NjYgMTkuODg1NyA4LjgzOTU1IDE5Ljc5MDMgOS4xNTA2M0MxOS43MjkzIDkuMzQ5MDEgMTkuNjM4NCA5LjM5MjcxIDE5LjQyNTcgOS4zMDU4OEMxOC42OTIgOC45OTk0IDE4LjA1ODMgOC41NDU3MSAxNy40OTgyIDcuOTk3NzJDMTYuNTQ3NyA3LjA3ODI3IDE1LjY4ODEgNi4wNjMzNiAxNC42MTYyIDUuMjY4NjlDMTQuMzY0NCA1LjA4Mjk2IDE0LjExMjUgNC45MTA0NSAxMy44NTIxIDQuNzQ2QzEyLjc1ODQgMy42ODM5NCAxMy45OTUyIDIuODExNjQgMTQuMjgxNiAyLjcwODE0QzE0LjU4MTIgMi42MDAwMyAxNC4zODU3IDIuMjI4NTcgMTMuNDE3OSAyLjIzMzE3QzEyLjQ1MDIgMi4yMzcyIDExLjU2NDYgMi41NjE1MSAxMC40MzU5IDIuOTkzMzVDMTAuMjcwOCAzLjA1ODMyIDEwLjA5NzIgMy4xMDU0NyA5LjkxOTUxIDMuMTQ0NTdDOC44OTU0IDIuOTUwMjIgNy44MzE2MiAyLjkwNzA5IDYuNzIwNjkgMy4wMzI0NUM0LjYyODc3IDMuMjY1MzMgMi45NTc3NyA0LjI1NDM2IDEuNzI5NTQgNS45NDI2MUMwLjI1NDA0MyA3Ljk3MTg0IC0wLjA5MzI2NzggMTAuMjc3NyAwLjMzMTY3IDEyLjY4MjRDMC43Nzg0NTggMTUuMjE3MSAyLjA3MjI1IDE3LjMxNTMgNC4wNjAwOCAxOC45NTU4QzYuMTIxNTIgMjAuNjU2NyA4LjQ5NTc3IDIxLjQ5MDUgMTEuMjA0NyAyMS4zMzA2QzEyLjg0OTggMjEuMjM1OCAxNC42ODEyIDIxLjAxNTUgMTYuNzQ3MyAxOS4yNjY5QzE3LjI2ODIgMTkuNTI2MiAxNy44MTUxIDE5LjYyOTcgMTguNzIxOSAxOS43MDc0QzE5LjQyMDUgMTkuNzcyMyAyMC4wOTMzIDE5LjY3MjkgMjAuNjE0MyAxOS41NjQ4QzIxLjQzMDIgMTkuMzkyMyAyMS4zNzM5IDE4LjYzNjcgMjEuMDc4OSAxOC40OTgxQzE4LjY4NzQgMTcuMzg0MyAxOS4yMTI0IDE3LjgzNzQgMTguNzM1MSAxNy40NzA2QzE5Ljk1MDEgMTYuMDMzIDIxLjgwNjMgMTMuNDc3NiAyMi4zNzkgOS45OTgyMUMyMi40MzUzIDkuNjE0MDkgMjIuNTA3MiA5LjA3MyAyMi40OTg2IDguNzYxOTJDMjIuNDk0IDguNTcyMTYgMjIuNTM3NyA4LjQ5ODU2IDIyLjc1NDUgOC40NzY3MUMyMy4zNTM2IDguNDA3NzEgMjMuOTM1IDguMjQzODMgMjQuNDY5MiA3Ljk0OTk5QzI2LjAxODggNy4xMDM1NyAyNi42NDM5IDUuNzEzMTggMjYuNzkxMSA0LjA0Njc4QzI2LjgxMjkgMy43OTIwNCAyNi43ODY1IDMuNTI4NjkgMjYuNTE3NCAzLjM5NDcxWk0xMy4wMTQzIDE4LjM5NDZDMTAuNjk2NCAxNi41NzI0IDkuNTcyMiAxNS45NzI2IDkuMTA4MTYgMTUuOTk4NUM4LjY3NDAyIDE2LjAyNDQgOC43NTIyMiAxNi41MjEyIDguODQ3NjggMTYuODQ0OUM4Ljk0NzczIDE3LjE2NDYgOS4wNzc2OCAxNy4zODQ5IDkuMjU5OTYgMTcuNjY1NUM5LjM4NTg5IDE3Ljg1MTIgOS40NzI3MiAxOC4xMjcyIDkuMTM0MDQgMTguMzM0OEM4LjM4NzY2IDE4Ljc5NjUgNy4wODk4NSAxOC4xNzk2IDcuMDI4OSAxOC4xNDkxQzUuNTE4MzMgMTcuMjU5NSA0LjI1NTU5IDE2LjA4NTMgMy4zNjU0NiAxNC40NzkzQzIuNTA1ODEgMTIuOTMzNyAyLjAwNjcgMTEuMjc1MyAxLjkyNDQ3IDkuNTA1NDJDMS45MDI2MiA5LjA3ODE4IDIuMDI4NTUgOC45MjY5NSAyLjQ1NDA2IDguODQ5MzJDMy4wMTQxMyA4Ljc0NTgyIDMuNTkxNDQgOC43MjM5NyA0LjE1MDkzIDguODA2MTlDNi41MTY1NiA5LjE1MTc4IDguNTMwMjcgMTAuMjA5MiAxMC4yMTg1IDExLjg4NDhDMTEuMTgyMiAxMi44Mzg4IDExLjkxMTQgMTMuOTc5IDEyLjY2MjMgMTUuMDkyOUMxMy40NjEgMTYuMjc1NyAxNC4zMjAxIDE3LjQwMjcgMTUuNDE0NCAxOC4zMjY4QzE1LjgwMDggMTguNjUwNSAxNi4xMDkgMTguODk2NiAxNi40MDQgMTkuMDc4M0MxNS41MTQ0IDE5LjE3NzggMTQuMDI5NyAxOS4xOTkxIDEzLjAxNDMgMTguMzk1OFYxOC4zOTQ2Wk0xNC4xMjUyIDExLjI0ODlDMTQuMTI1MiAxMS4wNTkxIDE0LjI3NyAxMC45MDc5IDE0LjQ2NzkgMTAuOTA3OUMxNC41MTEgMTAuOTA3OSAxNC41NTAxIDEwLjkxNjUgMTQuNTg1MiAxMC45MjkyQzE0LjYzMjkgMTAuOTQ2NCAxNC42NzY2IDEwLjk3MjMgMTQuNzExMSAxMS4wMTE0QzE0Ljc3MjEgMTEuMDcxOCAxNC44MDY2IDExLjE1OCAxNC44MDY2IDExLjI0ODlDMTQuODA2NiAxMS40Mzg2IDE0LjY1NDggMTEuNTg5OSAxNC40NjM5IDExLjU4OTlDMTQuMjczIDExLjU4OTkgMTQuMTI1MiAxMS40Mzg2IDE0LjEyNTIgMTEuMjQ4OVpNMTcuNTc1OSAxMy4wMTg4QzE3LjM1NDUgMTMuMTA5NiAxNy4xMzMxIDEzLjE4NzMgMTYuOTIwMyAxMy4xOTU5QzE2LjU5MDMgMTMuMjEzMSAxNi4yMzAzIDEzLjA3OTEgMTYuMDM0OCAxMi45MTUzQzE1LjczMTIgMTIuNjYwNSAxNS41MTM5IDEyLjUxNzkgMTUuNDIzIDEyLjA3MzRDMTUuMzgzOSAxMS44ODM3IDE1LjQwNTcgMTEuNTg5OSAxNS40NDAyIDExLjQyMTRDMTUuNTE4NSAxMS4wNTg1IDE1LjQzMTYgMTAuODI1NyAxNS4xNzU3IDEwLjYxNEMxNC45Njc2IDEwLjQ0MTUgMTQuNzAyNSAxMC4zOTM4IDE0LjQxMTUgMTAuMzkzOEMxNC4zMDI5IDEwLjM5MzggMTQuMjAzNCAxMC4zNDYxIDE0LjEyOTIgMTAuMzA3NkMxNC4wMDc5IDEwLjI0NzIgMTMuOTA3OCAxMC4wOTYgMTQuMDAzMyA5LjkxMDIzQzE0LjAzMzggOS44NDk4NSAxNC4xODE1IDkuNzAzMjIgMTQuMjE2IDkuNjc3MzRDMTQuNjExMSA5LjQ1MjUxIDE1LjA2NjUgOS41MjYxMiAxNS40ODggOS42OTQ2QzE1Ljg3ODQgOS44NTQ0NSAxNi4xNzQgMTAuMTQ3NyAxNi41OTg5IDEwLjU2MjNDMTcuMDMzIDExLjA2MzEgMTcuMTExMiAxMS4yMDExIDE3LjM1ODUgMTEuNTc3MkMxNy41NTQgMTEuODcxIDE3LjczMTcgMTIuMTcyOSAxNy44NTM2IDEyLjUxODVDMTcuOTI3MiAxMi43MzQxIDE3LjgzMTcgMTIuOTEwNyAxNy41NzU5IDEzLjAxODhaIiBmaWxsPSIjMzk2NEZFIi8+Cjwvc3ZnPgo='
 
+    // 导入完成后让面板重新加载一次，好让新会话出现在列表里。
+    const importBus = { token: 0, listeners: new Set() }
+    const notifyImported = () => {
+      importBus.token += 1
+      for (const listener of importBus.listeners) listener(importBus.token)
+    }
+
+    const frame = (key, src, title) => h('iframe', {
+      key,
+      src,
+      title,
+      allow: 'clipboard-write',
+      style: { width: '100%', height: '100%', border: 'none', display: 'block', background: '#fff' },
+    })
+
     /** 左侧面板：完整的网页版，带它自己的会话列表。 */
     function Panel() {
+      const [token, setToken] = React.useState(importBus.token)
+      React.useEffect(() => {
+        const listener = (value) => setToken(value)
+        importBus.listeners.add(listener)
+        return () => importBus.listeners.delete(listener)
+      }, [])
       return h('div', { style: { height: '100%', minHeight: 320, display: 'flex' } },
-        h('div', { style: { flex: 1, minWidth: 0 } },
-          h('iframe', {
-            src: '/webchat/',
-            title: 'DeepSeek 网页版',
-            allow: 'clipboard-write',
-            style: { width: '100%', height: '100%', border: 'none', display: 'block', background: '#fff' },
-          })))
+        h('div', { style: { flex: 1, minWidth: 0 } }, frame(token, '/webchat/', 'DeepSeek 网页版')))
     }
 
     /** 侧栏图标；size 由侧栏按宽窄状态给出。 */
@@ -36,7 +51,7 @@ window.__ModuleLoader__.load({
     }
 
     return {
-      inject: ['slots'],
+      inject: ['slots', 'layout'],
       apply(ctx) {
         ctx.effect(() => ctx.slots.inject('main', () => ctx.slots.register({
           name: 'main',
@@ -49,6 +64,56 @@ window.__ModuleLoader__.load({
           order: 20,
           label: '网页版',
         }, PanelIcon)), 'webchat.panellist')
+
+        /** 会话右键菜单：把这条会话复制一份到网页版。 */
+        function ImportRow(props) {
+          const [busy, setBusy] = React.useState(false)
+          const run = async () => {
+            if (busy) return
+            setBusy(true)
+            try {
+              const response = await fetch('/webchat/api/import/stage', {
+                method: 'POST',
+                headers: { 'content-type': 'application/json' },
+                body: JSON.stringify({ sessionId: String(props?.sessionId ?? '') }),
+              })
+              if (response.ok) {
+                notifyImported()
+                ctx.layout.selectPanel('chat-demo')
+              }
+            } catch {
+              // 失败就别打扰用户，菜单照常关闭。
+            } finally {
+              setBusy(false)
+              // 菜单由宿主管理，按 Esc 让它收起。
+              document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+            }
+          }
+          return h('button', {
+            type: 'button',
+            role: 'menuitem',
+            disabled: busy,
+            onClick: run,
+            style: {
+              display: 'block',
+              width: '100%',
+              padding: '6px 12px',
+              border: 'none',
+              background: 'transparent',
+              color: 'inherit',
+              font: 'inherit',
+              textAlign: 'left',
+              cursor: busy ? 'default' : 'pointer',
+              opacity: busy ? 0.6 : 1,
+            },
+          }, '导入到网页版')
+        }
+
+        ctx.effect(() => ctx.slots.inject('sidebar.workspaces.session.menu.item', () => ctx.slots.register({
+          name: 'sidebar.workspaces.session.menu.item',
+          id: 'chat-demo-import',
+          order: 10,
+        }, ImportRow)), 'webchat.import')
       },
     }
   },

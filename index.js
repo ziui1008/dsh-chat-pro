@@ -7,6 +7,8 @@
  * 网页版与 DSH 会话互不干涉：网页版用上游自带的本地存储，DSH 的会话不会出现在里面，
  * 网页版的对话也不会写进 DSH。两边的系统提示词与工具都不同，混合只会让双方都失真。
  */
+import os from 'node:os'
+import path from 'node:path'
 import { createWebview } from './src/webview.js'
 
 export const name = 'chat-demo-in-dsh'
@@ -18,10 +20,12 @@ export const inject = ['webServer']
  * @param {{ baseURL?: string }} config
  */
 export function apply(ctx, config = {}) {
-  const webview = createWebview(ctx, config)
+  const home = process.env.DSH_HOME || path.join(os.homedir(), '.dsh')
+  const webview = createWebview(ctx, config, home)
   ctx.effect(() => ctx.webServer.register({
     kind: 'prefix',
     path: '/webchat',
     handler: (req, res) => webview(req, res),
   }), 'webchat.routes')
 }
+
