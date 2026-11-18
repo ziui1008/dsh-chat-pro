@@ -40,6 +40,23 @@ window.__ModuleLoader__.load({
         h('div', { style: { flex: 1, minWidth: 0 } }, frame(token, '/webchat/', 'DeepSeek 网页版')))
     }
 
+    /** 会话菜单里的图标：一个"导入到托盘"的线性图标，风格对齐宿主其它条目。 */
+    function ImportIcon() {
+      return h('svg', {
+        viewBox: '0 0 16 16',
+        width: 16,
+        height: 16,
+        fill: 'none',
+        stroke: 'currentColor',
+        strokeWidth: 1.4,
+        strokeLinecap: 'round',
+        strokeLinejoin: 'round',
+        'aria-hidden': true,
+      },
+        h('path', { d: 'M8 2.5v6.2' }),
+        h('path', { d: 'M5.4 6.3 8 8.9l2.6-2.6' }),
+        h('path', { d: 'M3 10.4v1.8c0 .8.6 1.4 1.4 1.4h7.2c.8 0 1.4-.6 1.4-1.4v-1.8' }))
+    }
     /** 侧栏图标；size 由侧栏按宽窄状态给出。 */
     function PanelIcon(props) {
       const size = typeof props?.size === 'number' ? props.size : 16
@@ -65,6 +82,10 @@ window.__ModuleLoader__.load({
           label: '网页版',
         }, PanelIcon)), 'webchat.panellist')
 
+        ctx.effect(() => ctx.slots.inject('contextMenu.icon', () => ctx.slots.register({
+          name: 'contextMenu.icon',
+          key: 'chat-demo',
+        }, ImportIcon)), 'webchat.import-icon')
         // 会话菜单：注册成正规条目，样式、键盘操作、选中后收起都交给宿主。
         ctx.effect(() => ctx.contextMenus.register({
           id: 'chat-demo-in-dsh',
@@ -73,6 +94,8 @@ window.__ModuleLoader__.load({
           resolve: (target) => [{
             id: 'chat-demo-in-dsh:import',
             label: '导入到网页版',
+            icon: { key: 'chat-demo' },
+            afterContent: true,
             run: async () => {
               const response = await fetch('/webchat/api/import/stage', {
                 method: 'POST',
@@ -91,3 +114,4 @@ window.__ModuleLoader__.load({
     }
   },
 })
+
