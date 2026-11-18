@@ -30,3 +30,8 @@
 
 - 仓库与规范（`AGENTS.md` / `UPSTREAM.md` / `FIDELITY.md`）
 - `deepseek-webchat` 模型通道：官方请求形态、`latest_reminder`、服务端工具声明、中文思考
+
+## v0.2.1 — 2026-11-18
+
+- DSH 内入口重做：会话标题栏新增「网页版」View（只渲染当前会话），左侧面板新增「DeepSeek」（完整界面，带会话列表）；不再占用插件页签
+- 品牌标识改用官网 `web-logo.svg`（与官方逐字节一致），前端支持 `?embed=1` 与 `?session=<id>`

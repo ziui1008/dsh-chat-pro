@@ -22,7 +22,9 @@
 | F9 | 🟢 | 附件经宿主转发到官方 Files API（multipart 原样） | 浏览器不持有密钥 | **已验证**：上传返回真实 `file_id` |
 | F10 | 🟢 | 网页版新建的会话会镜像成 DSH 会话（`agentLoop.create` + `session.append` + `flush`） | 让两边的对话真正是同一份 | **已验证**：日志落在当前工作区，读回正常 |
 | F11 | 🟡 | 在网页版重命名或删除 DSH 原有会话，不会改动 DSH 日志 | 日志由 DSH 写入，插件不重写已有会话 | 保留 |
-| F12 | 🟡 | 网页版左上角用官方标识替代「API 使用 demo」 | 品牌贴合网页版 | 已完成 |
+| F12 | 🟢 | 网页版左上角用官方字标替代「API 使用 demo」 | 品牌贴合网页版 | 与官网 web-logo.svg 逐字节一致（SHA256 1BEAB099…） |
+| F13 | 🟢 | DSH 内入口改为「会话 View + 左侧面板」，不再占用插件页签 | 插件页属于插件市场 | 实测两处注册均 active |
+| F14 | 🟡 | 会话 View 用 iframe 承载 `?embed=1&session=<id>` | 前端与 DSH 解耦、可独立升级 | 已验证参数生效 |
 
 ## 验收记录
 
@@ -39,7 +41,8 @@
 | 2026-11-18 | `node --test` | 8 项通过 |
 | 2026-11-18 | 镜像保存（PUT 一条新会话） | 204，DSH 侧出现 `session.v4.jsonl.zstd`，读回 title 与两条消息 |
 | 2026-11-18 | 智能搜索（前端同款 body，声明 `deepseek_web_search`） | 200，2 个 `server_tool_use`、1 个 `web_search_tool_result`（15 条）、3 个引用增量 |
-| 2026-11-18 | 客户端槽位 `plugins.tab` | 占用者 `chat-demo-in-dsh`，`active: true`（页面实测） |
+| 2026-11-18 | 客户端槽位 | `conversation.view`、`main`、`sidebar.panellist` 三处均为 `chat-demo` 且 `active: true`（页面实测） |
+
 
 
 
