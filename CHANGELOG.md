@@ -57,3 +57,22 @@
 ## v0.2.5 — 2026-11-18
 
 - 镜像改为**按消息 id 对齐**，不再按条数推算：重复保存幂等（实测同一条保存两次 appended=0 且不重复），也能修复历史上只有提问、没有回答的半截回合（只补 assistant 那一条）
+
+## v0.3.0 — 2026-11-19 · 产品转向：单一入口，两边各管各的
+
+**删掉的**
+
+- 模型选择器里的 `deepseek-webchat` 路由（LlmAdapter + 官方请求体构造）
+- 会话内的 `conversation.view`「网页版」标签页
+- 镜像（`mirror.js`）、会话桥（`sessions.js`）、投影刷新、`postMessage` 通知、镜像自检与日志
+- 前端里的 `?embed=1` / `?session=` / 外部会话轮询
+
+**保留的**
+
+- 左侧面板「网页版」：`main` + `sidebar.panellist` 两个槽位，唯一的入口
+- 宿主代发：Messages / Files 转发，浏览器不持有密钥
+- 官方字标、深链 `/webchat/`、`/webchat/api/self-test`
+
+**恢复的**
+
+- 前端存储回到上游自带的 IndexedDB，补丁从 19.5KB 缩到 3.5KB（6 文件 +5/−7）

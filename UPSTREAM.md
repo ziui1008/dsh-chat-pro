@@ -8,7 +8,7 @@
 | 许可证 | MIT |
 | 基准快照 | `main` 分支，取于 2026-11-18，tag `v0.1.1` |
 | 基准 commit | `5d5dd754ebc1948e977ddb880a9eb5aa25f37b4c`（`fix: clarify history import errors and release v0.1.1`） |
-| 关键文件 | `src/services/chat/store.ts`（请求体）、`src/services/chat/reply.ts`（消息组装）、`src/services/chat/latestReminder.ts`（元信息行）、`src/services/api/types.ts`（协议类型） |
+| 关键文件 | `src/services/chat/store.ts`（请求体）、`src/services/api/client.ts`（端点）、`src/components/sider/Sider.tsx`（品牌） |
 
 ## 引入方式
 
@@ -53,5 +53,6 @@ $env:NODE_ENV="production"; pnpm exec rspack build -c rspack.config.ts
 ## 追加（2026-11-18）
 
 - 补丁：[`webview/patches/0001-dsh-integration.patch`](webview/patches/0001-dsh-integration.patch)（6 文件，+49/−215）
-- 改动点：`db.ts`（IndexedDB → `/webchat/api` HTTP）、`rspack.config.ts`（`apiOrigin = '/webchat'`）、`index.html` 与 `i18n/*`（品牌）、`Sider.tsx`（官方标识）
+- 改动点：`rspack.config.ts`（`apiOrigin = '/webchat'`）、`index.html` 与 `i18n/*`（品牌）、`Sider.tsx`（官方字标）、`SettingsDialog.tsx`（去掉 API Key 输入）\n- 存储保持上游原样（IndexedDB），不再接宿主会话
 - 构建：`pwsh scripts/build-webview.ps1`，产物同步到 `packages/chat-demo-in-dsh/webview/dist` 并随仓库分发（安装即用，用户不必构建）
+
