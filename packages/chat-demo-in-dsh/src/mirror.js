@@ -47,15 +47,23 @@ export function createMirror(ctx, options) {
     }
   }
 
-  /** 已经写进 DSH 的消息条数（每回合两条：提问 + 回答）。 */
+  /**
+   * 已经写进 DSH 的消息条数（每回合两条：提问 + 回答）。
+   *
+   * 不能数 `assistant/message`：DSH 的一个回合里可能有多条（每个 step 一条，
+   * 先思考后回答），在真实会话里会高估，导致"没有新消息"而什么也不追加。
+   * 按真人发言的 `user/message` 数 × 2 才和网页版的消息列表一一对应。
+   */
   const progressOf = (target) => {
-    let replies = 0
+    let prompts = 0
     let turns = 0
     for (const event of target.ownEvents()) {
-      if (event.type === 'assistant/message') replies += 1
       if (event.type === 'turn/start') turns += 1
+      if (event.type !== 'user/message') continue
+      const source = event.data?.source ?? event.data?.message?.source
+      if (source?.kind === 'user') prompts += 1
     }
-    return { mirrored: replies * 2, turns }
+    return { mirrored: prompts * 2, turns }
   }
 
   return async function mirror(session) {
@@ -125,4 +133,5 @@ export function createMirror(ctx, options) {
     return { appended, live: true, note }
   }
 }
+
 

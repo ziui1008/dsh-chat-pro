@@ -1,6 +1,6 @@
 {
   "name": "chat-demo-in-dsh",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "private": true,
   "type": "module",
   "description": "把 DeepSeek 官方开源的 chat-demo 搬进 DeepSeek Harness：官方请求形态 + 同款聊天界面。",
