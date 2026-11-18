@@ -224,6 +224,7 @@ async function selfTest(ctx, config, store) {
  */
 export function createWebview(ctx, config, home) {
   const store = createSessionStore(home)
+  const mirrorLog = new Map()
   // 镜像会话要落在一个真实工作区下；优先 DSH 的默认工作区。
   const preferred = discoverWorkspace(home)
     ?? ctx.get('workingDirectory')?.defaultDirectory
@@ -270,32 +271,35 @@ export function createWebview(ctx, config, home) {
       return
     }
 
+    // ---- 镜像日志 ----
+    if (pathname === '/webchat/api/mirror-log' && method === 'GET') {
+      sendJson(res, [...mirrorLog.entries()].map(([id, entry]) => ({ id, ...entry })))
+      return
+    }
+
     // ---- 镜像自检 ----
     if (pathname === '/webchat/api/mirror-test' && method === 'POST') {
       const body = await readJson(req).catch(() => ({}))
       const id = String(body.id ?? `webchat-test-${Date.now()}`)
       const now = Date.now()
-      const sample = {
-        id,
-        title: '镜像自检',
-        createdAt: now,
-        updatedAt: now,
-        messages: [
-          { id: `${id}-u`, role: 'user', content: '镜像自检提问', files: [], createdAt: 1 },
-          {
-            id: `${id}-a`,
-            role: 'assistant',
-            createdAt: 2,
-            model: 'deepseek-flash',
-            thinking: false,
-            search: false,
-            prefix: false,
-            status: 'done',
-            stopReason: 'end_turn',
-            blocks: [{ type: 'text', text: '镜像自检回答' }],
-          },
-        ],
+      const pairs = Number.isFinite(Number(body.pairs)) ? Math.max(1, Number(body.pairs)) : 1
+      const messages = []
+      for (let index = 1; index <= pairs; index += 1) {
+        messages.push({ id: `${id}-u${index}`, role: 'user', content: `镜像自检提问 ${index}`, files: [], createdAt: index * 2 - 1 })
+        messages.push({
+          id: `${id}-a${index}`,
+          role: 'assistant',
+          createdAt: index * 2,
+          model: 'deepseek-flash',
+          thinking: false,
+          search: false,
+          prefix: false,
+          status: 'done',
+          stopReason: 'end_turn',
+          blocks: [{ type: 'text', text: `镜像自检回答 ${index}` }],
+        })
       }
+      const sample = { id, title: '镜像自检', createdAt: now, updatedAt: now, messages }
       const result = await mirror(sample)
       const readback = store.get(id)
       const liveSession = ctx.get('sessions')?.get(id)
@@ -339,6 +343,8 @@ export function createWebview(ctx, config, home) {
         const body = await readJson(req)
         const saved = store.save(body)
         const result = await mirror(saved)
+        mirrorLog.set(saved.id, { at: Date.now(), messages: saved.messages.length, result })
+        if (mirrorLog.size > 20) mirrorLog.delete(mirrorLog.keys().next().value)
         // DSH 本来就有的会话不保留影子副本：日志是唯一来源。
         // 只有在镜像目标确实存活（内容已落盘）时才丢弃本地副本，否则保留以免丢消息。
         if (store.isDsh(saved.id) && result.live) store.remove(saved.id)
@@ -384,6 +390,8 @@ export function createWebview(ctx, config, home) {
     res.writeHead(404).end('not found')
   }
 }
+
+
 
 
 
