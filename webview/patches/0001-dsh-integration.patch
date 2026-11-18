@@ -69,7 +69,7 @@ index a74b591..643453b 100644
            )}
          </div>
 diff --git a/src/components/sider/Sider.tsx b/src/components/sider/Sider.tsx
-index 2f3cf56..674cd01 100644
+index 2f3cf56..e756b54 100644
 --- a/src/components/sider/Sider.tsx
 +++ b/src/components/sider/Sider.tsx
 @@ -52,7 +52,7 @@ export const Sider = ({ mobile = false }: { mobile?: boolean }) => {
@@ -77,7 +77,7 @@ index 2f3cf56..674cd01 100644
      <div className={clsx(styles.sider, mobile && styles.mobile)}>
        <div className={styles.top}>
 -        <div className={styles.appName}>{t('appName')}</div>
-+        <div className={styles.appName}><img src="/webchat/brand-mark.svg" alt="" style={{ height: 19, width: 26, marginRight: 8 }} /><span style={{ color: '#4D6BFE', fontWeight: 600, letterSpacing: '-0.2px' }}>{t('appName')}</span></div>
++        <div className={styles.appName}><img src="/webchat/brand-mark.svg" alt="deepseek" style={{ height: 20, width: 'auto', display: 'block' }} /></div>
          <IconButton
            size="m"
            icon={<IconPanelLeftOutline16 />}
