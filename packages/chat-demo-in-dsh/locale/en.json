@@ -1,6 +1,6 @@
 {
   "meta": {
-    "title": "Web chat mode",
-    "description": "Adds a 网页版 session preset that sends exactly what chat.deepseek.com sends: one identity line, no tools, no workspace context."
+    "title": "DeepSeek web chat panel",
+    "description": "Hosts the official chat-demo as a left-side panel: no API key, no login, requests proxied with your DSH DeepSeek account. Its conversations are kept in the browser and stay separate from DSH sessions."
   }
 }

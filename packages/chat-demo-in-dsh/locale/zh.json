@@ -1,6 +1,6 @@
 {
   "meta": {
-    "title": "网页版模式",
-    "description": "新增一个「网页版」会话预设：发给模型的只有一行身份说明，没有工具、没有工作目录和沙箱信息，和 chat.deepseek.com 一样的对话形态。新建会话时在预设里选它。"
+    "title": "DeepSeek 网页版面板",
+    "description": "在左侧面板托管官方 chat-demo：不用填 API Key、不用登录，请求由 DSH 的 DeepSeek 账户代发。它的对话存在浏览器本地，与 DSH 会话互不相干。"
   }
 }
