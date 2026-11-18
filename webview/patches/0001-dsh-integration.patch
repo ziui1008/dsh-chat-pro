@@ -12,10 +12,18 @@ index b236b4d..ffe5052 100644
  }: ConfigOptions = {}): Configuration => ({
    mode: dev ? 'development' : 'production',
 diff --git a/src/app/App.tsx b/src/app/App.tsx
-index d204c0f..fe93156 100644
+index d204c0f..f755438 100644
 --- a/src/app/App.tsx
 +++ b/src/app/App.tsx
-@@ -14,7 +14,6 @@ import { closeSearchPanel } from '../components/search/searchPanelState.js'
+@@ -7,6 +7,7 @@ import {
+   initChat,
+   retrySaveSessions,
+   selectSession,
++  syncExternalSession,
+   useChatStore,
+ } from '../services/chat/store.js'
+ import { SearchPanel } from '../components/search/SearchPanel.js'
+@@ -14,7 +15,6 @@ import { closeSearchPanel } from '../components/search/searchPanelState.js'
  import { SessionView } from '../components/session/SessionView.js'
  import { MobileHeader } from '../components/session/MobileHeader.js'
  import { Welcome } from '../components/session/Welcome.js'
@@ -23,7 +31,7 @@ index d204c0f..fe93156 100644
  import { SettingsDialog } from '../components/settings/SettingsDialog.js'
  import { Toast } from '../components/base/Toast.js'
  import { showToast } from '../components/base/toastState.js'
-@@ -29,6 +28,8 @@ import styles from './App.module.css'
+@@ -29,6 +29,8 @@ import styles from './App.module.css'
  export const App = () => {
    const t = useTranslate()
    const isMobile = useIsMobile()
@@ -32,7 +40,7 @@ index d204c0f..fe93156 100644
    const locale = useSettings((state) => state.locale)
    // 移动端侧边栏以独立抽屉管理开合状态
    const siderCollapsed = useSettings((state) => state.siderCollapsed) && !isMobile
-@@ -69,14 +70,12 @@ export const App = () => {
+@@ -69,14 +71,21 @@ export const App = () => {
  
    useEffect(() => {
      void initChat()
@@ -40,6 +48,15 @@ index d204c0f..fe93156 100644
 -    ensureApiKey()
    }, [])
  
++  // DSH 原生聊天在同一条会话里发消息时，网页版这边跟着更新。
++  useEffect(() => {
++    if (activeId === null) return
++    const timer = setInterval(() => {
++      void syncExternalSession(activeId)
++    }, 1500)
++    return () => clearInterval(timer)
++  }, [activeId])
++
    return (
      <>
        <div ref={frameRef} className={styles.frame}>
@@ -420,7 +437,7 @@ index a1f58ea..2127774 100644
    // eslint-disable-next-line no-console
    console.error(`[storage] ${action} failed`, error)
 diff --git a/src/services/chat/store.ts b/src/services/chat/store.ts
-index 32e74a5..6d84de7 100644
+index 32e74a5..4240ab9 100644
 --- a/src/services/chat/store.ts
 +++ b/src/services/chat/store.ts
 @@ -302,6 +302,11 @@ export const initChat = (): Promise<void> => {
@@ -435,3 +452,36 @@ index 32e74a5..6d84de7 100644
        }
      } catch (error) {
        if (epoch === historyEpoch) {
+@@ -366,6 +371,32 @@ const ensureSessionLoaded = (id: string): Promise<void> => {
+   return load.promise
+ }
+ 
++/**
++ * 把外部（DSH 原生聊天）写进同一条会话的新消息拉进界面。
++ * 正在流式生成、正在导入、或已切到别的会话时跳过，避免覆盖本地状态。
++ */
++export const syncExternalSession = async (id: string): Promise<void> => {
++  const state = get()
++  if (state.activeId !== id || state.importingHistory) return
++  if (Object.hasOwn(state.streaming, id)) return
++  const current = state.sessionCache[id]
++  if (!current) return
++  try {
++    const remote = await db.loadSession(id)
++    if (!remote) return
++    const next = get()
++    if (next.activeId !== id || Object.hasOwn(next.streaming, id)) return
++    if (remote.messages.length <= current.messages.length) return
++    set((s) => ({
++      sessionCache: {
++        ...s.sessionCache,
++        [id]: { ...current, messages: remote.messages, updatedAt: remote.updatedAt },
++      },
++    }))
++  } catch {
++    // 轮询失败不打扰用户，下一轮再试。
++  }
++}
+ /** 等所有回复的收尾（落盘）完成 */
+ const waitForIdle = (sessionId?: string) =>
+   new Promise<void>((resolve) => {

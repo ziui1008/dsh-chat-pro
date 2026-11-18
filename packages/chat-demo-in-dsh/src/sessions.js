@@ -297,6 +297,8 @@ export function createSessionStore(home) {
 
   return {
     list: () => all().map(summary).sort((a, b) => b.updatedAt - a.updatedAt),
+    /** 这条会话是否来自 DSH 自己的事件日志（而不是网页版新建的）。 */
+    isDsh: id => readDshSessions().some(session => session.id === id),
     get: id => all().find(session => session.id === id),
     save(session) {
       ensureOwn()
@@ -317,4 +319,5 @@ export function createSessionStore(home) {
     },
   }
 }
+
 

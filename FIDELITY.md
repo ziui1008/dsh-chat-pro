@@ -25,6 +25,7 @@
 | F12 | 🟢 | 网页版左上角用官方字标替代「API 使用 demo」 | 品牌贴合网页版 | 与官网 web-logo.svg 逐字节一致（SHA256 1BEAB099…） |
 | F13 | 🟢 | DSH 内入口改为「会话 View + 左侧面板」，不再占用插件页签 | 插件页属于插件市场 | 实测两处注册均 active |
 | F14 | 🟡 | 会话 View 用 iframe 承载 `?embed=1&session=<id>` | 前端与 DSH 解耦、可独立升级 | 已验证参数生效 |
+| F15 | 🟢 | 双向实时同步：网页版每 1.5s 拉一次宿主的同一会话，DSH 侧追加走 live 会话事件 | 两套渲染要看到同一份对话 | 网页版侧已实现；DSH 侧依靠 live 会话事件 |
 
 ## 验收记录
 
@@ -42,6 +43,7 @@
 | 2026-11-18 | 镜像保存（PUT 一条新会话） | 204，DSH 侧出现 `session.v4.jsonl.zstd`，读回 title 与两条消息 |
 | 2026-11-18 | 智能搜索（前端同款 body，声明 `deepseek_web_search`） | 200，2 个 `server_tool_use`、1 个 `web_search_tool_result`（15 条）、3 个引用增量 |
 | 2026-11-18 | 客户端槽位 | `conversation.view`、`main`、`sidebar.panellist` 三处均为 `chat-demo` 且 `active: true`（页面实测） |
+
 
 
 

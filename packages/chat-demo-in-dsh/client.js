@@ -31,20 +31,20 @@ window.__ModuleLoader__.load({
     /** 会话内视图：只显示当前会话。 */
     function ConversationView(props) {
       const sessionId = props?.sessionId === undefined ? '' : String(props.sessionId)
-      return h('div', { style: { height: '100%', minHeight: 0 } },
+      return h('div', { style: { height: 'calc(100vh - 132px)', minHeight: 420 } },
         frame(`/webchat/?embed=1&session=${encodeURIComponent(sessionId)}`, 'DeepSeek 网页版'))
     }
 
     /** 左侧面板：完整的网页版，带自己的会话列表。 */
     function Panel() {
-      return h('div', { style: { height: '100%', minHeight: 0 } }, frame('/webchat/', 'DeepSeek 网页版'))
+      return h('div', { style: { height: 'calc(100vh - 96px)', minHeight: 420 } }, frame('/webchat/', 'DeepSeek 网页版'))
     }
 
     /** 侧栏里的面板图标；size 由侧栏按宽/窄状态给出。 */
     function PanelIcon(props) {
       const size = typeof props?.size === 'number' ? props.size : 16
       return h('img', {
-        src: '/webchat/brand-mark.svg',
+        src: '/webchat/panel-icon.svg',
         alt: 'DeepSeek',
         style: { height: size, width: 'auto', display: 'block' },
       })
@@ -69,10 +69,12 @@ window.__ModuleLoader__.load({
           name: 'sidebar.panellist',
           id: 'chat-demo',
           order: 20,
-          label: 'DeepSeek',
+          label: '网页版',
         }, PanelIcon)), 'webchat.panellist')
       },
     }
   },
 })
+
+
 

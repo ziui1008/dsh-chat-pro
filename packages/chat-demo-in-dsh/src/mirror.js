@@ -1,12 +1,13 @@
 /**
- * 把网页版新建的会话镜像进 DSH 的事件日志，好让它也出现在 DSH 侧栏里。
+ * 把网页版的会话同步进 DSH 的事件日志，好让它也出现在 DSH 侧栏里。
  *
  * 做法不是自己拼 JSONL，而是走 DSH 自己的会话服务：
  *   1. `agentLoop.create()` 建一个会话（这一步才会挂上日志写入器）；
  *   2. 用 `session.append()` 追加 turn/step/消息事件；
  *   3. `sessions.flush()` 落盘。
  *
- * 全程 try/catch：镜像失败不影响网页版自己那份 JSON 存储。
+ * 进度不靠外部计数，直接数 live 会话里已有的 `assistant/message`——
+ * 这样无论会话最初来自 DSH 还是网页版，都能继续往后追加，不会重复。
  */
 
 /** 一条上游 assistant 消息 → DSH 的内容块。 */
@@ -22,7 +23,6 @@ export function createMirror(ctx, options) {
   const sessions = ctx.get('sessions')
   const agentLoop = ctx.get('agentLoop')
 
-  /** 这条会话在 DSH 侧已经镜像到第几条消息。 */
   const live = id => sessions?.get(id)
 
   async function ensure(id) {
@@ -33,24 +33,37 @@ export function createMirror(ctx, options) {
     return live(id)
   }
 
-  return async function mirror(session, mirrored = 0) {
-    if (agentLoop === undefined || sessions === undefined) return mirrored
+  /** 已经写进 DSH 的消息条数（每回合两条：提问 + 回答）。 */
+  const progressOf = (target) => {
+    let replies = 0
+    let turns = 0
+    for (const event of target.ownEvents()) {
+      if (event.type === 'assistant/message') replies += 1
+      if (event.type === 'turn/start') turns += 1
+    }
+    return { mirrored: replies * 2, turns }
+  }
+
+  return async function mirror(session) {
+    if (agentLoop === undefined || sessions === undefined) return 0
     let target
     try {
       target = await ensure(session.id)
     } catch {
-      return mirrored
+      return 0
     }
-    if (target === undefined) return mirrored
+    if (target === undefined) return 0
 
+    const { mirrored, turns } = progressOf(target)
     const pending = session.messages.slice(mirrored)
-    let turn = Math.max(1, Math.ceil(mirrored / 2))
+    let turn = turns + 1
+    let appended = 0
     try {
       for (let index = 0; index < pending.length; index += 1) {
         const message = pending[index]
-        // 网页版按「用户 / 助手」成对推进；剩下的半对留给下一次保存。
-        if (message.role !== 'user' || pending[index + 1]?.role !== 'assistant') break
         const reply = pending[index + 1]
+        // 网页版按「用户 / 助手」成对推进；剩下的半对留给下一次保存。
+        if (message.role !== 'user' || reply?.role !== 'assistant') break
         target.append('turn/start', { turn })
         target.append('user/message', {
           id: message.id,
@@ -73,13 +86,13 @@ export function createMirror(ctx, options) {
         target.append('step/end', { turn, step: 1 })
         target.append('turn/end', { turn, reason: { kind: 'completed' } })
         turn += 1
-        mirrored += 2
         index += 1
+        appended += 2
       }
-      await sessions.flush(target)
+      if (appended > 0) await sessions.flush(target)
     } catch {
-      // 事件顺序不被接受时停在这一条，下一次保存再试；网页版那份 JSON 不受影响。
+      // 事件顺序不被接受时停在失败处；网页版自己的状态不受影响。
     }
-    return mirrored
+    return appended
   }
 }

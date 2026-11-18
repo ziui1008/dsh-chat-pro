@@ -79,15 +79,15 @@ export async function readJson(req) {
   return JSON.parse(raw.toString('utf8'))
 }
 
-/** 读取并缓存注入了引导脚本的入口页。 */
-let cachedIndex
-
+/**
+ * 读取入口页并注入引导脚本。
+ *
+ * 每次都从磁盘读：构建产物按内容哈希命名，进程里缓存旧 HTML 会让页面去请求
+ * 一个已经不存在的 JS，结果是白屏。文件只有几百字节，读它的成本可以忽略。
+ */
 function readIndex() {
-  if (cachedIndex === undefined) {
-    const html = fs.readFileSync(path.join(DIST, 'index.html'), 'utf8')
-    cachedIndex = html.replace(/<head>/iu, `<head>${BOOTSTRAP}`)
-  }
-  return cachedIndex
+  const html = fs.readFileSync(path.join(DIST, 'index.html'), 'utf8')
+  return html.replace(/<head>/iu, `<head>${BOOTSTRAP}`)
 }
 
 async function sendFile(res, file, status = 200) {
@@ -294,9 +294,9 @@ export function createWebview(ctx, config, home) {
       if (method === 'PUT' && !isTitle) {
         const body = await readJson(req)
         const saved = store.save(body)
-        const before = saved.mirrored ?? 0
-        const after = await mirror(saved, before)
-        if (after !== before) store.save({ ...saved, mirrored: after })
+        await mirror(saved)
+        // DSH 本来就有的会话不保留影子副本，避免两份分叉；日志才是唯一来源。
+        if (store.isDsh(saved.id)) store.remove(saved.id)
         res.writeHead(204).end()
         return
       }
@@ -312,12 +312,19 @@ export function createWebview(ctx, config, home) {
     // ---- 静态资源 ----
     if (pathname === '/webchat' || pathname === '/webchat/') {
       const html = readIndex()
+      // 产物与入口页不一致时直接报出来，而不是给用户一片白屏。
+      const main = /src="(static\/js\/[^"]+\.js)"/u.exec(html)?.[1]
+      if (main !== undefined && !fs.existsSync(path.join(DIST, main))) {
+        res.writeHead(500, { 'content-type': 'text/plain; charset=utf-8' })
+        res.end(`webchat: 入口页引用的 ${main} 不存在，请重新构建前端（scripts/build-webview.ps1）`)
+        return
+      }
       res.writeHead(200, { 'content-type': MIME['.html'], 'cache-control': 'no-store', 'content-length': Buffer.byteLength(html) })
       res.end(method === 'HEAD' ? undefined : html)
       return
     }
-    if (pathname === '/webchat/brand-mark.svg') {
-      await sendFile(res, path.join(DIST, '..', 'brand-mark.svg'))
+    if (pathname === '/webchat/brand-mark.svg' || pathname === '/webchat/panel-icon.svg') {
+      await sendFile(res, path.join(DIST, '..', pathname.slice('/webchat/'.length)))
       return
     }
     if (pathname.startsWith('/webchat/')) {
@@ -332,6 +339,9 @@ export function createWebview(ctx, config, home) {
     res.writeHead(404).end('not found')
   }
 }
+
+
+
 
 
 
