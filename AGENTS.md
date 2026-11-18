@@ -14,7 +14,7 @@
 | 路由 | `src/webview.js` | 静态产物、`/webchat/api/*` 自检与导入接口、Messages / Files 转发 |
 | 约定 | `src/protocol.js` | 端点根、令牌头、路径越界判断（纯函数，有测试） |
 | 导入 | `src/dsh-import.js` | 只读解析 DSH 会话日志 → chat-demo 格式；暂存与确认（纯函数，有测试） |
-| 界面 | `client.js` | 左侧面板两个槽位（`main` + `sidebar.panellist`）与会话右键的导入行 |
+| 界面 | `client.js` | 左侧面板两个槽位（`main` + `sidebar.panellist`）与会话右键菜单贡献（`contextMenus`） |
 | 前端 | `webview/dist` | 官方 chat-demo 构建产物，随仓库分发 |
 
 上游基准：`5d5dd754ebc1948e977ddb880a9eb5aa25f37b4c`（chat-demo v0.1.1，MIT）。补丁在
@@ -41,5 +41,7 @@ pwsh scripts/build-webview.ps1     # 克隆上游、打补丁、构建、同步 
 ## 验证
 
 - `GET /webchat/api/self-test`：入口页、静态资源、一次真实生成，三项全绿。
-- 槽位：`main` / `sidebar.panellist` / `sidebar.workspaces.session.menu.item` 都有 `chat-demo` 相关条目，`conversation.view` 里**不应**出现。
+- 槽位：`main` / `sidebar.panellist` 有 `chat-demo`；会话菜单走 `contextMenus` 贡献，所以旧插槽 `sidebar.workspaces.session.menu.item` 应当是空的；`conversation.view` 里**不应**出现。
+- 菜单样式：会话右键菜单里的「导入到网页版」必须和置顶、重命名等原生条目等高同字号——新加菜单项一律用 `ctx.contextMenus.register`，不要往旧插槽塞自定义按钮。
 - 导入：右键任意会话 →「导入到网页版」→ `GET /webchat/api/import/pending` 返回该会话 → 网页版启动时写入并 `ack`。
+

@@ -51,7 +51,7 @@ window.__ModuleLoader__.load({
     }
 
     return {
-      inject: ['slots', 'layout'],
+      inject: ['slots', 'layout', 'contextMenus'],
       apply(ctx) {
         ctx.effect(() => ctx.slots.inject('main', () => ctx.slots.register({
           name: 'main',
@@ -65,55 +65,28 @@ window.__ModuleLoader__.load({
           label: '网页版',
         }, PanelIcon)), 'webchat.panellist')
 
-        /** 会话右键菜单：把这条会话复制一份到网页版。 */
-        function ImportRow(props) {
-          const [busy, setBusy] = React.useState(false)
-          const run = async () => {
-            if (busy) return
-            setBusy(true)
-            try {
+        // 会话菜单：注册成正规条目，样式、键盘操作、选中后收起都交给宿主。
+        ctx.effect(() => ctx.contextMenus.register({
+          id: 'chat-demo-in-dsh',
+          target: 'session',
+          order: 10,
+          resolve: (target) => [{
+            id: 'chat-demo-in-dsh:import',
+            label: '导入到网页版',
+            run: async () => {
               const response = await fetch('/webchat/api/import/stage', {
                 method: 'POST',
                 headers: { 'content-type': 'application/json' },
-                body: JSON.stringify({ sessionId: String(props?.sessionId ?? '') }),
+                body: JSON.stringify({ sessionId: String(target.sessionId) }),
               })
-              if (response.ok) {
-                notifyImported()
-                ctx.layout.selectPanel('chat-demo')
-              }
-            } catch {
-              // 失败就别打扰用户，菜单照常关闭。
-            } finally {
-              setBusy(false)
-              // 菜单由宿主管理，按 Esc 让它收起。
-              document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
-            }
-          }
-          return h('button', {
-            type: 'button',
-            role: 'menuitem',
-            disabled: busy,
-            onClick: run,
-            style: {
-              display: 'block',
-              width: '100%',
-              padding: '6px 12px',
-              border: 'none',
-              background: 'transparent',
-              color: 'inherit',
-              font: 'inherit',
-              textAlign: 'left',
-              cursor: busy ? 'default' : 'pointer',
-              opacity: busy ? 0.6 : 1,
+              if (!response.ok) throw new Error(`stage failed: ${response.status}`)
+              notifyImported()
+              ctx.layout.selectPanel('chat-demo')
+              ctx.contextMenus.notify('已导入到网页版', true)
             },
-          }, '导入到网页版')
-        }
-
-        ctx.effect(() => ctx.slots.inject('sidebar.workspaces.session.menu.item', () => ctx.slots.register({
-          name: 'sidebar.workspaces.session.menu.item',
-          id: 'chat-demo-import',
-          order: 10,
-        }, ImportRow)), 'webchat.import')
+            failureLabel: '导入失败',
+          }],
+        }), 'webchat.import')
       },
     }
   },
