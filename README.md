@@ -9,8 +9,6 @@
     <img alt="基于官方 chat-demo" src="https://img.shields.io/badge/%E5%9F%BA%E4%BA%8E-%E5%AE%98%E6%96%B9%20chat--demo-2F6FEB?style=flat-square" />
     <a href="https://github.com/deepseek-ai/deepseek-harness"><img alt="powered by dsh" src="https://img.shields.io/badge/powered_by-dsh-4D6BFE?style=flat-square&logo=deepseek&logoColor=white" /></a>
   </p>
-  <img src="docs/assets/webview.png" width="820" alt="DSH 里的 DeepSeek 网页版面板：左侧会话列表、中间对话区、底部输入框与深度思考、智能搜索开关" />
-  <p><sub>左侧面板里的 DeepSeek 网页版</sub></p>
 </div>
 
 ## 为什么需要它
@@ -48,6 +46,8 @@
 
 点左侧的「网页版」，之后就像用网页版一样聊天。
 
+![在 DSH 里打开网页版面板](docs/assets/dsh-panel.png)
+
 面板里有自己的会话列表，和 DSH 的会话分开管理。
 
 ## 把对话搬进来
@@ -68,5 +68,7 @@
 这个插件基于 DeepSeek 官方开源的 [chat-demo](https://github.com/deepseek-ai/chat-demo) 开发。我们对它的改动很少：请求发往哪里、左上角的标识、以及藏起 API Key 输入框。界面、交互、请求逻辑都是官方原版。
 
 没有二次包装，也没有替你「优化」提示词——模型拿到的就是网页上那一份。
+
+
 
 
