@@ -4,12 +4,9 @@ dist/
 .DS_Store
 Thumbs.db
 
-# 本地会话转储：含本次私人对话内容，入库前请确认
-evidence/session.jsonl
-
-# upstream 克隆（构建输入，不入库）
+# 上游克隆（构建输入，不入库）
 webview/vendor/
 
-# 网页版构建产物随仓库分发：装完即用，用户不必自己构建
-!packages/chat-demo-in-dsh/webview/dist/
-!packages/chat-demo-in-dsh/webview/dist/**
+# 构建产物随仓库分发：装完即用，用户不必自己构建
+!webview/dist/
+!webview/dist/**

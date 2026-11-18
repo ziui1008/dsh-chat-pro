@@ -21,11 +21,11 @@
 ## 命令
 
 ```bash
-node --test packages/chat-demo-in-dsh/test/protocol.test.js
+node --test test/protocol.test.js
 pwsh scripts/build-webview.ps1
 ```
 
-安装：`plugin_manager` 装 `packages/chat-demo-in-dsh`。宿主代码改动后要 `remove_bundle` 再 `install_bundle` 才重新加载；只改 `client.js`/`dist` 时刷新页面即可。
+安装：`plugin_manager` 装仓库根目录（`package.json` 在根上，`dsh plugin add github:<owner>/<repo>` 因此可直接用）。宿主代码改动后要 `remove_bundle` 再 `install_bundle` 才重新加载；只改 `client.js`/`dist` 时刷新页面即可。
 
 ## 硬约束
 
@@ -45,3 +45,4 @@ pwsh scripts/build-webview.ps1
 - `GET /webchat/`：入口页含引导脚本；`GET /webchat/static/js/main.*.js`：200。
 - `GET /webchat/api/self-test`：入口页、静态资源、一次真实生成，三项全绿。
 - 槽位：`main` 与 `sidebar.panellist` 都有 `chat-demo`，`conversation.view` 里**不应**出现它。
+
