@@ -1,7 +1,7 @@
 <div align="center">
   <img src="icon.svg" width="88" alt="chat-in-dsh 图标" />
   <h1>chat-in-dsh</h1>
-  <p><strong>在 DeepSeek Harness 里，用原汁原味的网页版对话。</strong></p>
+  <p><strong>在 DeepSeek Harness（DSH）里，用原汁原味的网页版对话。</strong></p>
   <p>
     <a href="https://github.com/YinkaiYu/chat-in-dsh/actions/workflows/test.yml"><img alt="Test" src="https://img.shields.io/github/actions/workflow/status/YinkaiYu/chat-in-dsh/test.yml?style=flat-square" /></a>
     <a href="https://github.com/YinkaiYu/chat-in-dsh/releases"><img alt="Release" src="https://img.shields.io/github/v/release/YinkaiYu/chat-in-dsh?style=flat-square" /></a>
