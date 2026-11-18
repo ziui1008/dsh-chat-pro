@@ -1,4 +1,4 @@
-# chat-demo-in-dsh
+# chat-in-dsh
 
 在 DeepSeek Harness 里加一个「网页版」面板，界面和 chat.deepseek.com 一致，用你在 DSH 里已登录的 DeepSeek，不受官网限额影响。
 
@@ -27,7 +27,7 @@
 把下面这段话直接发给 DSH：
 
 ```
-帮我安装这个 DSH 插件：https://github.com/YinkaiYu/chat-demo-in-dsh
+帮我安装这个 DSH 插件：https://github.com/YinkaiYu/chat-in-dsh
 装好后告诉我怎么打开。
 ```
 
@@ -53,4 +53,10 @@
 **从 DSH 搬**
 
 在左侧会话列表里右键任意一条 →「导入到网页版」，那份对话会复制一份进来，之后两边各自独立。
+
+## 关于可靠性
+
+这个插件基于 DeepSeek 官方开源的 [chat-demo](https://github.com/deepseek-ai/chat-demo) 开发。我们对它的改动很少：请求发往哪里、左上角的标识、以及藏起 API Key 输入框。界面、交互、请求逻辑都是官方原版。
+
+没有二次包装，也没有替你"优化"提示词——模型拿到的就是网页上那一份。
 

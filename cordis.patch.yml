@@ -1,9 +1,10 @@
-# chat-demo-in-dsh
+# chat-in-dsh
 #
 # 一个入口：左侧面板列表里的「网页版」（main + sidebar.panellist 用同一个 key 拼成）。
 # 网页版与 DSH 会话互不干涉，因此这里没有预设、没有模型路由、也没有会话桥。
 - insert:
-    - id: chat-demo-in-dsh
-      name: chat-demo-in-dsh
+    - id: chat-in-dsh
+      name: chat-in-dsh
       config:
         baseURL: ''
+

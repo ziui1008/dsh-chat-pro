@@ -5,7 +5,7 @@
  * 另外在会话的右键菜单里加一行「导入到网页版」——一次性复制，复制完两边各管各的。
  */
 window.__ModuleLoader__.load({
-  id: 'chat-demo-in-dsh',
+  id: 'chat-in-dsh',
   factory(require) {
     const React = require('react')
     const h = React.createElement
@@ -72,29 +72,29 @@ window.__ModuleLoader__.load({
       apply(ctx) {
         ctx.effect(() => ctx.slots.inject('main', () => ctx.slots.register({
           name: 'main',
-          key: 'chat-demo',
+          key: 'chat-in-dsh',
         }, Panel)), 'webchat.panel')
 
         ctx.effect(() => ctx.slots.inject('sidebar.panellist', () => ctx.slots.register({
           name: 'sidebar.panellist',
-          id: 'chat-demo',
+          id: 'chat-in-dsh',
           order: 20,
           label: '网页版',
         }, PanelIcon)), 'webchat.panellist')
 
         ctx.effect(() => ctx.slots.inject('contextMenu.icon', () => ctx.slots.register({
           name: 'contextMenu.icon',
-          key: 'chat-demo',
+          key: 'chat-in-dsh',
         }, ImportIcon)), 'webchat.import-icon')
         // 会话菜单：注册成正规条目，样式、键盘操作、选中后收起都交给宿主。
         ctx.effect(() => ctx.contextMenus.register({
-          id: 'chat-demo-in-dsh',
+          id: 'chat-in-dsh',
           target: 'session',
           order: 10,
           resolve: (target) => [{
-            id: 'chat-demo-in-dsh:import',
+            id: 'chat-in-dsh:import',
             label: '导入到网页版',
-            icon: { key: 'chat-demo' },
+            icon: { key: 'chat-in-dsh' },
             afterContent: true,
             run: async () => {
               const response = await fetch('/webchat/api/import/stage', {
@@ -104,7 +104,7 @@ window.__ModuleLoader__.load({
               })
               if (!response.ok) throw new Error(`stage failed: ${response.status}`)
               notifyImported()
-              ctx.layout.selectPanel('chat-demo')
+              ctx.layout.selectPanel('chat-in-dsh')
               ctx.contextMenus.notify('已导入到网页版', true)
             },
             failureLabel: '导入失败',
@@ -114,4 +114,5 @@ window.__ModuleLoader__.load({
     }
   },
 })
+
 
