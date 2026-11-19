@@ -16,6 +16,7 @@ import { pipeline } from 'node:stream/promises'
 import { fileURLToPath } from 'node:url'
 import { DEFAULT_BASE_URL, TOKEN_HEADER, apiRoot, isInside } from './protocol.js'
 import { ackPending, listPending, readDshSession, stageImport } from './dsh-import.js'
+import { buildCatalog, dshRouteOf, streamDshReply } from './llm-bridge.js'
 
 /** 构建产物位置（包内自带，安装即可用）。 */
 const DIST = fileURLToPath(new URL('../webview/dist/', import.meta.url))
@@ -78,15 +79,10 @@ async function readJsonBody(req) {
   if (raw.length === 0) return {}
   return JSON.parse(raw.toString('utf8'))
 }
-/** 读取并缓存注入了引导脚本的入口页。 */
-let cachedIndex
-
+/** 读取入口页并注入引导脚本。入口页只有几百字节，且响应本身 no-store，所以每次现读，避免 dist 更新后仍发旧入口。 */
 function readIndex() {
-  if (cachedIndex === undefined) {
-    const html = fs.readFileSync(path.join(DIST, 'index.html'), 'utf8')
-    cachedIndex = html.replace(/<head>/iu, `<head>${BOOTSTRAP}`)
-  }
-  return cachedIndex
+  const html = fs.readFileSync(path.join(DIST, 'index.html'), 'utf8')
+  return html.replace(/<head>/iu, `<head>${BOOTSTRAP}`)
 }
 
 async function sendFile(res, file) {
@@ -100,14 +96,13 @@ async function sendFile(res, file) {
 }
 
 /** 上游请求原样转发，鉴权换成 DSH 账户凭据；SSE 直接透传。 */
-async function proxyMessages(ctx, config, req, res) {
+async function proxyMessages(ctx, config, req, res, body) {
   const baseURL = config.baseURL || process.env.DEEPSEEK_BASE_URL || DEFAULT_BASE_URL
   const token = await ctx.get('deepseekAccount')?.resolveToken(baseURL)
   if (token === undefined) {
     sendJson(res, { error: { message: '尚未登录 DeepSeek，或该端点不接受 DSH 账户凭据' } }, 401)
     return
   }
-  const body = await readBody(req)
   // 带附件的请求要原样带上浏览器发的 anthropic-beta（files-api-…），
   // 少了它上游会直接 400：Missing or invalid anthropic-beta header。
   const beta = req.headers['anthropic-beta']
@@ -261,9 +256,39 @@ export function createWebview(ctx, config, home) {
       return
     }
 
-    if (pathname === '/webchat/anthropic/v1/messages' && method === 'POST') {
+    // DSH 里已配置的供应商 / 模型 / 思考档位，供输入框左侧的切换器使用。
+    if (pathname === '/webchat/api/catalog' && isGet) {
       try {
-        await proxyMessages(ctx, config, req, res)
+        sendJson(res, await buildCatalog(ctx))
+      } catch (error) {
+        sendJson(res, { groups: [], error: String(error?.message ?? error) }, 500)
+      }
+      return
+    }
+
+    if (pathname === '/webchat/anthropic/v1/messages' && method === 'POST') {
+      let body
+      try {
+        body = await readJsonBody(req)
+      } catch {
+        sendJson(res, { error: { message: '请求体不是合法 JSON' } }, 400)
+        return
+      }
+      const route = dshRouteOf(body)
+      if (route !== undefined) {
+        try {
+          await streamDshReply(ctx, body, route, res)
+        } catch (error) {
+          if (!res.headersSent) {
+            sendJson(res, { error: { message: String(error?.message ?? error) } }, error?.status ?? 502)
+          } else {
+            res.destroy()
+          }
+        }
+        return
+      }
+      try {
+        await proxyMessages(ctx, config, req, res, Buffer.from(JSON.stringify(body)))
       } catch (error) {
         if (!res.headersSent) sendJson(res, { error: { message: String(error?.message ?? error) } }, 502)
         else res.destroy()
