@@ -27,25 +27,15 @@
 - **能从 DSH 带对话过来**：任意会话右键「导入到网页版」，复制一份接着聊
 - **能借用 DSH 里的其它模型**：右下角切换供应商、模型与思考档位，同一份界面继续用
 
-<img src="docs/assets/webview-reply.png" width="760" alt="对话与思考过程">
-
 ## 安装
 
 **1. 打开左侧的「插件」页**
 
-<img src="docs/assets/dsh-1.png" width="760" alt="打开插件页">
-
 **2. 点右上角的「添加插件」**
-
-<img src="docs/assets/dsh-2.png" width="760" alt="点添加插件">
 
 **3. 粘贴仓库地址 `https://github.com/ziui1008/dsh-chat-pro`（或填包名 `chat-in-dsh`），点「安装」**
 
-<img src="docs/assets/dsh-3.png" width="760" alt="填写包名并安装">
-
 **4. 装好后点「立即启用」**
-
-<img src="docs/assets/dsh-4.png" width="760" alt="点立即启用">
 
 之后左侧面板列表里会多出「网页版」。
 
@@ -53,15 +43,9 @@
 
 点左侧面板列表里的「网页版」：
 
-<img src="docs/assets/dsh-5.png" width="760" alt="点网页版打开面板">
-
 如果想专心聊天，点左上角这个按钮把 DSH 的会话栏收起来：
 
-<img src="docs/assets/dsh-6.png" width="760" alt="收起 DSH 会话栏">
-
 收起之后就是完整的网页版界面：
-
-<img src="docs/assets/dsh-7.png" width="760" alt="网页版面板">
 
 面板里有自己的会话列表，和 DSH 的会话分开管理。
 
@@ -96,5 +80,4 @@
 
 ## 致谢
 
-界面、交互和请求逻辑来自 DeepSeek 官方开源的 [chat-demo](https://github.com/deepseek-ai/chat-demo)（MIT），插件宿主依赖 [DeepSeek Harness](https://github.com/deepseek-ai) 的 web server、槽位与模型服务。这两部分版权归 DeepSeek 所有，对应许可证见 `webview/dist/LICENSE` 与 [NOTICE](NOTICE)。
-
+界面、交互和请求逻辑来自 DeepSeek 官方开源的 [chat-demo](https://github.com/deepseek-ai/chat-demo)（MIT），插件宿主依赖 [DeepSeek Harness](https://github.com/deepseek-ai) 的 web server、槽位与模型服务。这两部分版权归 DeepSeek 所有，对应许可证见 `webview/dist/LICENSE` 与 [NOTICE](NOTICE)；完整的贡献名单见 [CONTRIBUTORS.md](CONTRIBUTORS.md)。
