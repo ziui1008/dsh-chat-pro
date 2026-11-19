@@ -5,6 +5,10 @@ import {
   WEBCHAT_PROVIDER,
   dshRouteOf,
   effortFor,
+  renderSearchContext,
+  runSearch,
+  searchQueryOf,
+  searchRequested,
   toGenerateMessages,
 } from '../src/llm-bridge.js'
 
@@ -96,4 +100,72 @@ test('图片附件在非网页版模型上明确报错', () => {
       ),
     error => error.status === 400
   )
+})
+
+test('只有带 deepseek_web_search 工具才算要求联网搜索', () => {
+  assert.equal(searchRequested({ tools: [{ name: 'deepseek_read_url' }] }), false)
+  assert.equal(searchRequested({ tools: [{ name: 'deepseek_web_search' }] }), true)
+  assert.equal(searchRequested({}), false)
+  assert.equal(searchRequested(undefined), false)
+})
+
+test('检索词取最后一条用户消息，压缩空白并截断', () => {
+  const body = {
+    messages: [
+      { role: 'user', content: [{ type: 'text', text: '第一轮' }] },
+      { role: 'assistant', content: [{ type: 'text', text: '回答' }] },
+      { role: 'user', content: [{ type: 'text', text: '  今天   北京天气\n怎么样  ' }] },
+    ],
+  }
+  assert.equal(searchQueryOf(body), '今天 北京天气 怎么样')
+  assert.equal(searchQueryOf({ messages: [] }), undefined)
+  assert.equal(searchQueryOf(body, 3), '今天 ')
+})
+
+test('检索结果渲染成可引用的上下文，不是指令', () => {
+  const text = renderSearchContext('北京天气', {
+    sources: [
+      { url: 'https://example.com/a', title: '天气页', snippet: '晴，22 度' },
+      { url: 'https://example.com/b' },
+    ],
+  })
+  assert.match(text, /检索词：北京天气/)
+  assert.match(text, /1\. 天气页/)
+  assert.match(text, /2\. https:\/\/example\.com\/b/)
+  assert.match(text, /晴，22 度/)
+})
+
+test('没有 web 服务或检索报错时安静跳过', async () => {
+  const noWeb = { get: () => undefined }
+  assert.equal(await runSearch(noWeb, { provider: 'nume' }, '问题'), undefined)
+  const failing = {
+    get: () => ({
+      searchReady: async () => true,
+      search: async () => {
+        throw new Error('boom')
+      },
+    }),
+  }
+  assert.equal(await runSearch(failing, { provider: 'nume' }, '问题'), undefined)
+  const notReady = {
+    get: () => ({ searchReady: async () => false, search: async () => assert.fail('不该检索') }),
+  }
+  assert.equal(await runSearch(notReady, { provider: 'nume' }, '问题'), undefined)
+})
+
+test('检索成功时返回来源列表', async () => {
+  const ctx = {
+    get: () => ({
+      searchReady: async provider => provider === 'nume',
+      search: async (request, signal) => {
+        assert.equal(request.query, '问题')
+        assert.equal(request.maxResults, 6)
+        assert.equal(signal, undefined)
+        return { sources: [{ url: 'https://example.com/a', title: 'A' }, { nope: true }], truncated: false }
+      },
+    }),
+  }
+  const result = await runSearch(ctx, { provider: 'nume' }, '问题')
+  assert.equal(result.sources.length, 1)
+  assert.equal(result.sources[0].url, 'https://example.com/a')
 })

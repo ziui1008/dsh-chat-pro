@@ -58,13 +58,25 @@
 
 翻译只做结构转换，不动内容：`system`、消息、附件都由浏览器构造，宿主不拼接提示词，`x-api-key` 一律丢弃。
 
+### 联网搜索走 DSH 自己的检索
+
+`deepseek_web_search` 是 DeepSeek 的服务端工具，只能挂在它自家端点上执行。所以选中第三方模型、又开着「智能搜索」时，宿主改用 DSH 自己的检索服务（`ctx.web.search()`，走你 DSH 里配好的搜索提供方）：
+
+1. 从最后一条用户消息取检索词，先问 `ctx.web.searchReady(provider)`，不可用就跳过；
+2. 检索结果按「标题 / 链接 / 摘要」拼成一段上下文，附在这次请求的 `system` 后面；
+3. 同时按 Anthropic 的形状补发 `server_tool_use` 与 `web_search_tool_result` 两个块，前端就会照常画出「已阅读 N 个网页」。
+
+代价是检索算在 DSH 这一侧：多一次网络往返、prompt 变长；正文里的角标不做，那是 DeepSeek 服务端工具特有的产物。
+
 ## 配置
 
 `cordis.patch.yml` 里的 `baseURL` 可以改上游端点，也可以用环境变量 `DEEPSEEK_BASE_URL`；宿主会自动补 `/v1`。留空则用默认的 `https://api.deepseek.com/anthropic`。
 
 ## 已知限制
 
-- 图片、文件附件、联网搜索工具只在「DeepSeek 网页版」这条路径可用。选中第三方模型时发附件会直接报错提示，不会静默丢内容。
+- 图片、文件附件只在「DeepSeek 网页版」这条路径可用。选中第三方模型时发附件会直接报错提示，不会静默丢内容。
+- 联网搜索在第三方模型下由宿主代做，正文引用角标（`citations`）不提供——前端只会显示「已阅读 N 个网页」这一层。
+- `deepseek_read_url`（按链接读页面）仍然只在网页版可用。
 - 第三方模型有没有思考块，取决于供应商是否真的返回 reasoning 内容。
 - 导入只搬文字和思考：工具调用、图片、系统提醒会被丢掉。
 - 会话格式绑在 DSH 的 `session.v4.jsonl[.zstd]` 上，DSH 换格式后导入会失效。

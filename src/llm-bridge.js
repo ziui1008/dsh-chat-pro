@@ -104,6 +104,83 @@ export function toGenerateMessages(body, route) {
   return { messages, system }
 }
 
+/** 浏览器有没有要求联网搜索（网页版用 `deepseek_web_search` 这个服务端工具表示）。 */
+export function searchRequested(body) {
+  const tools = Array.isArray(body?.tools) ? body.tools : []
+  return tools.some(tool => tool !== null && typeof tool === 'object' && tool.name === 'deepseek_web_search')
+}
+
+/** 检索词：最后一条用户消息的正文，过长的截断，避免把整段粘贴当查询。 */
+export function searchQueryOf(body, limit = 200) {
+  const messages = Array.isArray(body?.messages) ? body.messages : []
+  for (let index = messages.length - 1; index >= 0; index -= 1) {
+    const message = messages[index]
+    if (message === null || typeof message !== 'object' || message.role !== 'user') continue
+    const text = textOfContent(message.content)
+    if (typeof text !== 'string') continue
+    const query = text.replace(/\s+/g, ' ').trim()
+    if (query.length > 0) return query.length > limit ? query.slice(0, limit) : query
+  }
+  return undefined
+}
+
+/** 宿主没声明 inject，按需取联网能力；没有就跳过检索。 */
+const webOf = ctx => {
+  try {
+    return ctx.get('web')
+  } catch {
+    return undefined
+  }
+}
+
+/**
+ * 给非网页版模型补一次联网检索。
+ *
+ * 网页版的搜索是 DeepSeek 的服务端工具，只有它自己的端点会执行；切到别的供应商后这个
+ * 工具就没人管了，于是这里改用 DSH 的 `ctx.web.search()` 把结果取回来交给模型。
+ * 检索失败、没配搜索提供方、或者该路由拿不到凭据时返回 `undefined`，请求照常继续。
+ */
+export async function runSearch(ctx, route, query, signal) {
+  const web = webOf(ctx)
+  if (web === undefined || typeof web.search !== 'function') return undefined
+  try {
+    if (typeof web.searchReady === 'function') {
+      const ready = await web.searchReady(route.provider)
+      if (ready === false) return undefined
+    }
+    const result = await web.search({ query, maxResults: 6 }, signal)
+    const sources = Array.isArray(result?.sources) ? result.sources.filter(source => typeof source?.url === 'string') : []
+    if (sources.length === 0 && typeof result?.content !== 'string') return undefined
+    return { ...result, sources }
+  } catch {
+    return undefined
+  }
+}
+
+/** 把检索结果压成给模型看的上下文；这只是数据，不是额外的人格或指令。 */
+export function renderSearchContext(query, result) {
+  const lines = [
+    `以下是宿主为本次提问做的联网检索，检索词：${query}`,
+    '回答时可以引用其中的来源，并在句末给出链接；与本问题无关的结果直接忽略。',
+  ]
+  let index = 0
+  for (const source of result.sources ?? []) {
+    index += 1
+    const title = typeof source.title === 'string' && source.title.length > 0 ? source.title : source.url
+    const excerpt = typeof source.snippet === 'string' && source.snippet.length > 0
+      ? source.snippet
+      : typeof source.summary === 'string' ? source.summary : ''
+    lines.push('', `${index}. ${title}`, `   ${source.url}`, ...(excerpt.length > 0 ? [`   ${excerpt}`] : []))
+  }
+  if (typeof result.content === 'string' && result.content.trim().length > 0) {
+    lines.push('', result.content.trim())
+  }
+  return lines.join('\n')
+}
+
+/** 服务端工具块的 id 形如 `srvtoolu_s_1_<32 位 hex>`。 */
+const toolUseId = () => `srvtoolu_s_1_${randomUUID().replaceAll('-', '')}`
+
 /** 思考开关 + 档位 → DSH 的 reasoningEffort。 */
 export function effortFor(route, thinking, efforts) {
   const ids = new Set((efforts ?? []).map(effort => effort.id))
@@ -205,7 +282,7 @@ export async function streamDshReply(ctx, body, route, res) {
       return []
     }
   })()
-  const { messages, system } = toGenerateMessages(body, route)
+  const { messages, system: browserSystem } = toGenerateMessages(body, route)
   if (messages.length === 0) {
     const error = new Error('没有可发送的消息')
     error.status = 400
@@ -215,12 +292,20 @@ export async function streamDshReply(ctx, body, route, res) {
   const controller = new AbortController()
   res.on('close', () => controller.abort())
 
+  // 非网页版路由下 deepseek_web_search 没有执行者，改用 DSH 自己的联网检索补上；
+  // 检索失败或被取消时 found 为 undefined，这一轮照常按纯文本继续。
+  const query = searchRequested(body) ? searchQueryOf(body) : undefined
+  const found = query === undefined ? undefined : await runSearch(ctx, route, query, controller.signal)
+  const system = [browserSystem, found === undefined ? undefined : renderSearchContext(query, found)]
+    .filter(part => typeof part === 'string' && part.length > 0)
+    .join('\n\n')
+
   const options = {
     provider: route.provider,
     model: route.model,
     messages,
     signal: controller.signal,
-    ...(system === undefined ? {} : { system }),
+    ...(system.length === 0 ? {} : { system }),
     ...(effort === undefined ? {} : { reasoningEffort: effort }),
     ...(typeof body.max_tokens === 'number' ? { maxTokens: body.max_tokens } : {}),
   }
@@ -239,6 +324,46 @@ export async function streamDshReply(ctx, body, route, res) {
     },
   })
 
+  // 检索结果按网页版的服务端工具协议下发，前端才会画出「已搜索 N 个网页」那张卡片。
+  let base = 0
+  if (found !== undefined) {
+    const id = toolUseId()
+    writeEvent(res, 'content_block_start', {
+      type: 'content_block_start',
+      index: 0,
+      content_block: {
+        type: 'server_tool_use',
+        id,
+        name: 'deepseek_web_search',
+        input: { action: 'search', queries: [query] },
+        caller: { type: 'direct' },
+        kind: 'search',
+      },
+    })
+    writeEvent(res, 'content_block_stop', { type: 'content_block_stop', index: 0 })
+    writeEvent(res, 'content_block_start', {
+      type: 'content_block_start',
+      index: 1,
+      content_block: {
+        type: 'web_search_tool_result',
+        tool_use_id: id,
+        kind: 'search',
+        content: found.sources.map(source => ({
+          type: 'web_search_result',
+          title: typeof source.title === 'string' && source.title.length > 0 ? source.title : source.url,
+          url: source.url,
+          snippet: typeof source.snippet === 'string' ? source.snippet : source.summary ?? '',
+          site_icon: null,
+          site_name: null,
+          page_age: null,
+          encrypted_content: '',
+        })),
+      },
+    })
+    writeEvent(res, 'content_block_stop', { type: 'content_block_stop', index: 1 })
+    base = 2
+  }
+
   let usage
   let stopReason = 'end_turn'
   const open = new Set()
@@ -246,58 +371,65 @@ export async function streamDshReply(ctx, body, route, res) {
     for await (const chunk of llm.stream(options)) {
       switch (chunk.type) {
         case 'block-start': {
+          const index = chunk.index + base
           if (chunk.blockType === 'text') {
-            open.add(chunk.index)
+            open.add(index)
             writeEvent(res, 'content_block_start', {
               type: 'content_block_start',
-              index: chunk.index,
+              index,
               content_block: { type: 'text', text: '' },
             })
           } else if (chunk.blockType === 'reasoning') {
-            open.add(chunk.index)
+            open.add(index)
             writeEvent(res, 'content_block_start', {
               type: 'content_block_start',
-              index: chunk.index,
+              index,
               content_block: { type: 'thinking', thinking: '', signature: '' },
             })
           }
           break
         }
-        case 'text-delta':
-          if (!open.has(chunk.index)) {
-            open.add(chunk.index)
+        case 'text-delta': {
+          const index = chunk.index + base
+          if (!open.has(index)) {
+            open.add(index)
             writeEvent(res, 'content_block_start', {
               type: 'content_block_start',
-              index: chunk.index,
+              index,
               content_block: { type: 'text', text: '' },
             })
           }
           writeEvent(res, 'content_block_delta', {
             type: 'content_block_delta',
-            index: chunk.index,
+            index,
             delta: { type: 'text_delta', text: chunk.text },
           })
           break
-        case 'reasoning-delta':
-          if (!open.has(chunk.index)) {
-            open.add(chunk.index)
+        }
+        case 'reasoning-delta': {
+          const index = chunk.index + base
+          if (!open.has(index)) {
+            open.add(index)
             writeEvent(res, 'content_block_start', {
               type: 'content_block_start',
-              index: chunk.index,
+              index,
               content_block: { type: 'thinking', thinking: '', signature: '' },
             })
           }
           writeEvent(res, 'content_block_delta', {
             type: 'content_block_delta',
-            index: chunk.index,
+            index,
             delta: { type: 'thinking_delta', thinking: chunk.text },
           })
           break
-        case 'block-end':
-          if (open.delete(chunk.index)) {
-            writeEvent(res, 'content_block_stop', { type: 'content_block_stop', index: chunk.index })
+        }
+        case 'block-end': {
+          const index = chunk.index + base
+          if (open.delete(index)) {
+            writeEvent(res, 'content_block_stop', { type: 'content_block_stop', index })
           }
           break
+        }
         case 'usage':
           usage = chunk.usage
           break

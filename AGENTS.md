@@ -35,7 +35,7 @@ pwsh scripts/build-webview.ps1     # 克隆上游、打补丁、构建、同步 
 
 1. **一个入口**：只有左侧面板。不要加 `conversation.view`、不要做会话双向同步——这是产品决定，不是待办。模型路由是例外：仅在 `POST /webchat/anthropic/v1/messages` 里按请求体 `dsh` 字段改投 `ctx.llm.stream()`，不新增面向 DSH 会话的入口。
 2. **网页版独立存储**：用上游自带的本地存储；只有「导入」这一次性复制会从 DSH 读数据。
-3. **不发明提示词**：浏览器构造请求体，宿主只转发。
+3. **不发明提示词**：浏览器构造请求体，宿主只转发。唯一例外是非网页版路由的联网检索——把 `ctx.web.search()` 的结果原样附在 system 后面，并且只做这一步，不改写用户问题。
 4. **密钥不出宿主**：浏览器不持有 API Key；`BOOTSTRAP` 注入的只是让上游放行的占位值。
 5. **许可证合规**：`webview/dist/LICENSE` 是上游 MIT 原文，不要删。
 
@@ -46,4 +46,5 @@ pwsh scripts/build-webview.ps1     # 克隆上游、打补丁、构建、同步 
 - 菜单样式：会话右键菜单里的「导入到网页版」必须和置顶、重命名等原生条目等高同字号——新加菜单项一律用 `ctx.contextMenus.register`，不要往旧插槽塞自定义按钮。
 - 导入：右键任意会话 →「导入到网页版」→ `GET /webchat/api/import/pending` 返回该会话 → 网页版启动时写入并 `ack`。
 - 模型切换：`GET /webchat/api/catalog` 列出 DSH 的供应商与模型；带 `dsh:{provider,model,effort}` 的 `messages` 请求应当返回 Anthropic SSE，不带则回落网页版端点。
+- 联网检索：带 `dsh` 路由且 `tools` 里有 `deepseek_web_search` 时，SSE 开头依次是 `server_tool_use`、`web_search_tool_result`，正文块索引从 2 起；`ctx.web.searchReady()` 为假时应静默跳过、照常出正文。
 
