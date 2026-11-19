@@ -14,6 +14,7 @@
 | 路由 | `src/webview.js` | 静态产物、`/webchat/api/*` 自检与导入接口、Messages / Files 转发 |
 | 约定 | `src/protocol.js` | 端点根、令牌头、路径越界判断（纯函数，有测试） |
 | 导入 | `src/dsh-import.js` | 只读解析 DSH 会话日志 → chat-demo 格式；暂存与确认（纯函数，有测试） |
+| 模型桥 | `src/llm-bridge.js` | `/webchat/api/catalog` 与「把网页版请求转给 `ctx.llm.stream()`」的翻译层（纯函数部分有测试） |
 | 界面 | `client.js` | 左侧面板两个槽位（`main` + `sidebar.panellist`）与会话右键菜单贡献（`contextMenus`） |
 | 前端 | `webview/dist` | 官方 chat-demo 构建产物，随仓库分发 |
 
@@ -23,7 +24,7 @@
 ## 命令
 
 ```bash
-node --test test/protocol.test.js test/dsh-import.test.js
+node --test test/protocol.test.js test/dsh-import.test.js test/llm-bridge.test.js
 pwsh scripts/build-webview.ps1     # 克隆上游、打补丁、构建、同步 webview/dist
 ```
 
@@ -32,7 +33,7 @@ pwsh scripts/build-webview.ps1     # 克隆上游、打补丁、构建、同步 
 
 ## 硬约束
 
-1. **一个入口**：只有左侧面板。不要加模型路由、不要加 `conversation.view`、不要做会话双向同步——这是产品决定，不是待办。
+1. **一个入口**：只有左侧面板。不要加 `conversation.view`、不要做会话双向同步——这是产品决定，不是待办。模型路由是例外：仅在 `POST /webchat/anthropic/v1/messages` 里按请求体 `dsh` 字段改投 `ctx.llm.stream()`，不新增面向 DSH 会话的入口。
 2. **网页版独立存储**：用上游自带的本地存储；只有「导入」这一次性复制会从 DSH 读数据。
 3. **不发明提示词**：浏览器构造请求体，宿主只转发。
 4. **密钥不出宿主**：浏览器不持有 API Key；`BOOTSTRAP` 注入的只是让上游放行的占位值。
@@ -44,4 +45,5 @@ pwsh scripts/build-webview.ps1     # 克隆上游、打补丁、构建、同步 
 - 槽位：`main` / `sidebar.panellist` 有 `chat-demo`；会话菜单走 `contextMenus` 贡献，所以旧插槽 `sidebar.workspaces.session.menu.item` 应当是空的；`conversation.view` 里**不应**出现。
 - 菜单样式：会话右键菜单里的「导入到网页版」必须和置顶、重命名等原生条目等高同字号——新加菜单项一律用 `ctx.contextMenus.register`，不要往旧插槽塞自定义按钮。
 - 导入：右键任意会话 →「导入到网页版」→ `GET /webchat/api/import/pending` 返回该会话 → 网页版启动时写入并 `ack`。
+- 模型切换：`GET /webchat/api/catalog` 列出 DSH 的供应商与模型；带 `dsh:{provider,model,effort}` 的 `messages` 请求应当返回 Anthropic SSE，不带则回落网页版端点。
 
