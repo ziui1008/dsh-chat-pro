@@ -24,7 +24,7 @@
 ## 命令
 
 ```bash
-node --test test/protocol.test.js test/dsh-import.test.js test/llm-bridge.test.js test/llm-fetch.test.js test/llm-tools.test.js test/llm-loop.test.js
+node --test test/protocol.test.js test/dsh-import.test.js test/llm-bridge.test.js test/llm-fetch.test.js test/llm-tools.test.js test/llm-loop.test.js test/llm-sanitize.test.js
 pwsh scripts/build-webview.ps1     # 克隆上游、打补丁、构建、同步 webview/dist
 ```
 
@@ -35,7 +35,7 @@ pwsh scripts/build-webview.ps1     # 克隆上游、打补丁、构建、同步 
 
 1. **一个入口**：只有左侧面板。不要加 `conversation.view`、不要做会话双向同步——这是产品决定，不是待办。模型路由是例外：仅在 `POST /webchat/anthropic/v1/messages` 里按请求体 `dsh` 字段改投 `ctx.llm.stream()`，不新增面向 DSH 会话的入口。
 2. **网页版独立存储**：用上游自带的本地存储；只有「导入」这一次性复制会从 DSH 读数据。
-3. **不发明提示词**：浏览器构造请求体，宿主只转发。唯一例外是非网页版路由的联网检索——把 `ctx.web.search()` 的结果原样附在 system 后面，并且只做这一步，不改写用户问题。
+3. **不发明提示词**：浏览器构造请求体，宿主只转发。唯一例外是非网页版路由的联网工具——把 `web_search` / `read_url` 两个工具声明给模型，由模型自己决定调用，宿主只执行并把 `ctx.web` 的结果原样回灌；不改写用户问题，也不额外塞人格设定。工具没就绪时宿主会加一句「现在做不到，别编造」，这属于诚实性提示，不是内容改写。
 4. **密钥不出宿主**：浏览器不持有 API Key；`BOOTSTRAP` 注入的只是让上游放行的占位值。
 5. **许可证合规**：`webview/dist/LICENSE` 是上游 MIT 原文，不要删。
 
@@ -48,4 +48,5 @@ pwsh scripts/build-webview.ps1     # 克隆上游、打补丁、构建、同步 
 - 模型切换：`GET /webchat/api/catalog` 列出 DSH 的供应商与模型；带 `dsh:{provider,model,effort}` 的 `messages` 请求应当返回 Anthropic SSE，不带则回落网页版端点。
 - 联网检索：带 `dsh` 路由且 `tools` 里有 `deepseek_web_search` 时，SSE 先发 `server_tool_use`，检索完再发 `web_search_tool_result`（失败时是 `web_search_tool_result_error`）；读网页同理，先发 `read_link` 的调用块、抓完再发 `web_fetch_tool_result`。正文块索引排在所有工具块之后。
 - 检索/抓取都只在 `dsh` 路由下发生；网页版那条路仍由 DeepSeek 服务端执行 `deepseek_web_search`、`deepseek_read_url`，宿主不插手。
+- 极端场景：本机 DSH 在跑时执行 `python scripts/extreme-probes.py`，会打一轮超小 `max_tokens`、未知供应商、并发、内网地址、客户端提前断开、连续快问；预期全部有交代、无挂起。场景矩阵记在 `docs/tool-loop-review.md`。
 

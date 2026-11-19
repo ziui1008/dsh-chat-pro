@@ -354,6 +354,8 @@ export async function buildCatalog(ctx) {
 }
 
 const writeEvent = (res, type, payload) => {
+  // 客户端已经断开时不要往死掉的 socket 上写，否则会冒 ERR_STREAM_DESTROYED。
+  if (res.writableEnded || res.destroyed === true) return
   res.write(`event: ${type}\ndata: ${JSON.stringify(payload)}\n\n`)
 }
 
@@ -631,12 +633,66 @@ function toolResultBlockSSE(call, result) {
 }
 
 /**
+ * 有些供应商不认 tools，会把自家工具语法（`<｜｜DSML｜｜ invoke …>`）写进正文或思考里。
+ * 这些标记对用户是噪音，而且回灌给下一轮会污染上下文，所以流出去之前先刮掉。
+ */
+const DSML_TAG = /<\/?[｜|]{1,2}DSML[｜|]{1,2}[^>]{0,80}>/g
+
+const stripControlTags = text => text.replace(DSML_TAG, '')
+
+/** 跨 chunk 的标签要拼起来再判断，所以留一点尾巴等下一片。 */
+export function createScrubber() {
+  let pending = ''
+  return {
+    push(chunk) {
+      pending += chunk
+      let output = ''
+      let index = 0
+      while (index < pending.length) {
+        const lt = pending.indexOf('<', index)
+        if (lt === -1) {
+          output += pending.slice(index)
+          index = pending.length
+          break
+        }
+        output += pending.slice(index, lt)
+        const rest = pending.slice(lt)
+        const match = /^<\/?[｜|]{1,2}DSML[｜|]{1,2}[^>]{0,80}>/.exec(rest)
+        if (match !== null) {
+          index = lt + match[0].length
+          continue
+        }
+        if (/^<\/?[｜|]/.test(rest) && rest.length < 160 && !rest.includes('>')) {
+          pending = rest
+          return output
+        }
+        // 单独一个 '<' 也可能是标签的开头，留到下一片再判断；正文里很少以 '<' 结尾。
+        if (rest === '<') {
+          pending = rest
+          return output
+        }
+        output += '<'
+        index = lt + 1
+      }
+      pending = ''
+      return output
+    },
+    flush() {
+      const output = stripControlTags(pending)
+      pending = ''
+      return output
+    },
+  }
+}
+
+/**
  * Stream one assistant turn to the browser and collect what the model produced.
  *
  * Block indices are rebased onto `cursor` so several rounds share one Anthropic message.
  */
 async function streamRound(llm, options, res, cursor) {
   const text = new Map()
+  const scrubbers = new Map()
   const blocks = []
   let maxIndex = -1
   let finishReason
@@ -673,13 +729,17 @@ async function streamRound(llm, options, res, cursor) {
         maxIndex = Math.max(maxIndex, chunk.index)
         const index = cursor + chunk.index
         if (!open.has(index)) startBlock(index, 'text')
+        const scrubber = scrubbers.get(chunk.index) ?? createScrubber()
+        scrubbers.set(chunk.index, scrubber)
+        const safe = scrubber.push(chunk.text)
+        if (safe.length === 0) break
         const entry = text.get(chunk.index) ?? { type: 'text', text: '' }
-        entry.text += chunk.text
+        entry.text += safe
         text.set(chunk.index, entry)
         writeEvent(res, 'content_block_delta', {
           type: 'content_block_delta',
           index,
-          delta: { type: 'text_delta', text: chunk.text },
+          delta: { type: 'text_delta', text: safe },
         })
         break
       }
@@ -687,19 +747,40 @@ async function streamRound(llm, options, res, cursor) {
         maxIndex = Math.max(maxIndex, chunk.index)
         const index = cursor + chunk.index
         if (!open.has(index)) startBlock(index, 'reasoning')
+        const scrubber = scrubbers.get(chunk.index) ?? createScrubber()
+        scrubbers.set(chunk.index, scrubber)
+        const safe = scrubber.push(chunk.text)
+        if (safe.length === 0) break
         const entry = text.get(chunk.index) ?? { type: 'reasoning', text: '' }
-        entry.text += chunk.text
+        entry.text += safe
         text.set(chunk.index, entry)
         writeEvent(res, 'content_block_delta', {
           type: 'content_block_delta',
           index,
-          delta: { type: 'thinking_delta', thinking: chunk.text },
+          delta: { type: 'thinking_delta', thinking: safe },
         })
         break
       }
       case 'block-end': {
         maxIndex = Math.max(maxIndex, chunk.index)
         const index = cursor + chunk.index
+        const scrubber = scrubbers.get(chunk.index)
+        if (scrubber !== undefined) {
+          const tail = scrubber.flush()
+          if (tail.length > 0) {
+            const entry = text.get(chunk.index)
+            if (entry !== undefined) {
+              entry.text += tail
+              writeEvent(res, 'content_block_delta', {
+                type: 'content_block_delta',
+                index,
+                delta: entry.type === 'reasoning'
+                  ? { type: 'thinking_delta', thinking: tail }
+                  : { type: 'text_delta', text: tail },
+              })
+            }
+          }
+        }
         if (open.delete(index)) {
           writeEvent(res, 'content_block_stop', { type: 'content_block_stop', index })
         }
@@ -805,6 +886,8 @@ export async function streamDshReply(ctx, body, route, res) {
   const convo = [...messages]
   let cursor = 0
   let calls = 0
+  const usedCallIds = new Set()
+  const toolCache = new Map()
   let usage
   let stopReason = 'end_turn'
   let failure
@@ -852,40 +935,46 @@ export async function streamDshReply(ctx, body, route, res) {
       })
 
       for (const call of turn.toolCalls) {
+        // 同一条回复里工具 id 必须唯一，否则前端的调用与结果配不上对。
+        const callId = usedCallIds.has(call.id) ? `${call.id}#${usedCallIds.size}` : call.id
+        usedCallIds.add(callId)
+        const callView = callId === call.id ? call : { ...call, id: callId }
         if (calls >= MAX_TOOL_CALLS) {
           convo.push({
             id: randomUUID(),
             role: 'tool',
-            toolCallId: call.id,
+            toolCallId: callId,
             isError: true,
             content: [{ type: 'text', text: '这次回答的工具调用次数已用完，请直接基于已有信息作答，不要再调用工具。' }],
-            source: { kind: 'tool', callId: call.id },
+            source: { kind: 'tool', callId },
           })
           continue
         }
         calls++
-        const opSignal = AbortSignal.any([signal, AbortSignal.timeout(20_000)])
-        const result = await executeTool(ctx, route, call, opSignal)
+        const cacheKey = `${call.name}:${call.arguments ?? ''}`
+        const cached = toolCache.get(cacheKey)
+        const result = cached ?? await executeTool(ctx, route, callView, AbortSignal.any([signal, AbortSignal.timeout(20_000)]))
+        if (cached === undefined) toolCache.set(cacheKey, result)
         writeEvent(res, 'content_block_start', {
           type: 'content_block_start',
           index: cursor,
-          content_block: toolCallBlockSSE(call, result),
+          content_block: toolCallBlockSSE(callView, result),
         })
         writeEvent(res, 'content_block_stop', { type: 'content_block_stop', index: cursor })
         writeEvent(res, 'content_block_start', {
           type: 'content_block_start',
           index: cursor + 1,
-          content_block: toolResultBlockSSE(call, result),
+          content_block: toolResultBlockSSE(callView, result),
         })
         writeEvent(res, 'content_block_stop', { type: 'content_block_stop', index: cursor + 1 })
         cursor += 2
         convo.push({
           id: randomUUID(),
           role: 'tool',
-          toolCallId: call.id,
+          toolCallId: callId,
           isError: !result.ok,
           content: [{ type: 'text', text: result.text }],
-          source: { kind: 'tool', callId: call.id },
+          source: { kind: 'tool', callId },
         })
       }
       stopReason = 'end_turn'

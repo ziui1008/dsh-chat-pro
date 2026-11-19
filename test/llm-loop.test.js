@@ -30,11 +30,18 @@ function fakeResponse() {
 function fakeContext(turns, ready = {}) {
   let round = 0
   const seen = []
+  const counts = { search: 0, fetch: 0 }
   const web = {
     searchReady: async () => ready.search !== false,
-    search: async () => ({ truncated: false, sources: [{ url: 'https://example.com/a', title: 'A', snippet: 'aa' }] }),
+    search: async () => {
+      counts.search += 1
+      return { truncated: false, sources: [{ url: 'https://example.com/a', title: 'A', snippet: 'aa' }] }
+    },
     fetchReady: async () => ready.fetch !== false,
-    fetch: async () => ({ url: 'https://example.com/a', statusCode: 200, body: { kind: 'html', content: '<p>正文</p>' } }),
+    fetch: async () => {
+      counts.fetch += 1
+      return { url: 'https://example.com/a', statusCode: 200, body: { kind: 'html', content: '<p>正文</p>' } }
+    },
   }
   const llm = {
     resolveModelInfo: async () => ({ reasoning: undefined }),
@@ -69,6 +76,7 @@ function fakeContext(turns, ready = {}) {
   }
   return {
     seen,
+    counts,
     ctx: {
       get(name) {
         if (name === 'llm') return llm
@@ -233,4 +241,21 @@ test('供应商配置类错误换成用户看得懂的话', () => {
   assert.match(friendlyFailure('401 Unauthorized: invalid api key'), /凭据不可用/)
   assert.equal(friendlyFailure('socket hang up'), 'socket hang up')
   assert.equal(friendlyFailure('x'.repeat(400)).length, 301)
+})
+
+test('同一轮里重复的同参调用只执行一次，id 仍然唯一', async () => {
+  const twice = [
+    { type: 'tool', id: 'call_same', name: 'web_search', args: { query: '北京天气' } },
+    { type: 'tool', id: 'call_same', name: 'web_search', args: { query: '北京天气' } },
+  ]
+  const { ctx, counts } = fakeContext([twice, [{ type: 'text', text: '好。' }]])
+  const res = fakeResponse()
+  await streamDshReply(ctx, body, route, res)
+
+  assert.equal(counts.search, 1)
+  const ids = res.events
+    .filter(event => event.type === 'content_block_start' && event.content_block.type === 'server_tool_use')
+    .map(event => event.content_block.id)
+  assert.equal(ids.length, 2)
+  assert.equal(new Set(ids).size, 2)
 })
