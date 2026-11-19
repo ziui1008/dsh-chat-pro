@@ -22,11 +22,12 @@ jobs:
           node --check client.js
           node --check src/protocol.js
           node --check src/webview.js
+          node --check src/llm-bridge.js
           node --check scripts/smoke-webview.mjs
 
       - name: 清单可解析
         run: node -e "JSON.parse(require('fs').readFileSync('package.json','utf8'))"
 
       - name: 单元测试
-        run: node --test test/protocol.test.js test/dsh-import.test.js
+        run: node --test test/protocol.test.js test/dsh-import.test.js test/llm-bridge.test.js
 
