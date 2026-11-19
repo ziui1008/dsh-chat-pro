@@ -3,7 +3,7 @@
 把 DeepSeek 官网那套对话界面搬进 DeepSeek Harness 的左侧面板，并且让它能用上 DSH 里已经配好的模型。
 
 <p>
-  <img alt="version" src="https://img.shields.io/badge/version-0.7.0-2F6FEB?style=flat-square" />
+  <img alt="version" src="https://img.shields.io/badge/version-0.8.0-2F6FEB?style=flat-square" />
   <a href="https://github.com/ziui1008/dsh-chat-pro/actions/workflows/test.yml"><img alt="test" src="https://github.com/ziui1008/dsh-chat-pro/actions/workflows/test.yml/badge.svg" /></a>
   <a href="LICENSE"><img alt="license" src="https://img.shields.io/badge/license-MIT-2EA043?style=flat-square" /></a>
   <a href="https://github.com/deepseek-ai/chat-demo"><img alt="upstream" src="https://img.shields.io/badge/upstream-chat--demo-555?style=flat-square" /></a>
@@ -68,6 +68,12 @@
 
 代价是检索算在 DSH 这一侧：多一次网络往返、prompt 变长；正文里的角标不做，那是 DeepSeek 服务端工具特有的产物。
 
+### 读网页也是宿主代做
+
+`deepseek_read_url` 同理。选中第三方模型时，宿主会挑最多两个页面抓正文：你在消息里贴的链接优先，不足时补一条检索结果；抓到的正文去掉标签后作为摘录附在 `system` 里。单页 8 秒超时，抓不到就发一个 `web_fetch_tool_result_error` 继续回答。
+
+这样做意味着**第三方模型不会自己决定去读哪个链接**——它能读的是宿主挑出来的那几个页面。要放宽，就得让模型自己发工具调用，那是另一套循环。
+
 ## 配置
 
 `cordis.patch.yml` 里的 `baseURL` 可以改上游端点，也可以用环境变量 `DEEPSEEK_BASE_URL`；宿主会自动补 `/v1`。留空则用默认的 `https://api.deepseek.com/anthropic`。
@@ -76,7 +82,7 @@
 
 - 图片、文件附件只在「DeepSeek 网页版」这条路径可用。选中第三方模型时发附件会直接报错提示，不会静默丢内容。
 - 联网搜索在第三方模型下由宿主代做，正文引用角标（`citations`）不提供——前端只会显示「已阅读 N 个网页」这一层。
-- `deepseek_read_url`（按链接读页面）仍然只在网页版可用。
+- 读网页同样由宿主代做，只读两页（用户贴的链接 + 至多一条检索结果），模型不会自己再决定读哪个链接。
 - 第三方模型有没有思考块，取决于供应商是否真的返回 reasoning 内容。
 - 导入只搬文字和思考：工具调用、图片、系统提醒会被丢掉。
 - 会话格式绑在 DSH 的 `session.v4.jsonl[.zstd]` 上，DSH 换格式后导入会失效。
@@ -116,7 +122,7 @@ pwsh scripts/build-webview.ps1
 | `src/protocol.js` | 端点根、令牌头、路径越界判断 |
 | `client.js` | 左侧面板槽位与「导入到网页版」右键菜单 |
 | `webview/dist` | 上游前端的构建产物 |
-| `test/` | 协议、导入、模型桥的单元测试 |
+| `test/` | 协议、导入、模型桥与检索/抓取的单元测试 |
 
 ## 致谢
 

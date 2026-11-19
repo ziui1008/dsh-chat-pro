@@ -178,6 +178,116 @@ export function renderSearchContext(query, result) {
   return lines.join('\n')
 }
 
+/** 浏览器有没有要求读网页（网页版用 `deepseek_read_url` 这个服务端工具表示）。 */
+export function readRequested(body) {
+  const tools = Array.isArray(body?.tools) ? body.tools : []
+  return tools.some(tool => tool !== null && typeof tool === 'object' && tool.name === 'deepseek_read_url')
+}
+
+/** 用户消息里明写的 http(s) 链接，按出现顺序去重。 */
+export function urlsInText(text, limit = 2) {
+  if (typeof text !== 'string' || text.length === 0) return []
+  const found = text.match(/https?:\/\/[^\s<>"'）)，。；、]+/g) ?? []
+  const unique = []
+  for (const url of found) {
+    const cleaned = url.replace(/[.,;:!?]+$/, '')
+    if (!unique.includes(cleaned)) unique.push(cleaned)
+    if (unique.length >= limit) break
+  }
+  return unique
+}
+
+/** 要读的页面：用户贴的链接优先，其次最多补一条检索结果，避免每轮都抓满。 */
+export function readTargets(body, found, limit = 2) {
+  const targets = []
+  const messages = Array.isArray(body?.messages) ? body.messages : []
+  for (let index = messages.length - 1; index >= 0; index -= 1) {
+    const message = messages[index]
+    if (message === null || typeof message !== 'object' || message.role !== 'user') continue
+    for (const url of urlsInText(textOfContent(message.content), limit)) {
+      if (!targets.includes(url)) targets.push(url)
+    }
+    break
+  }
+  let fromSearch = 0
+  for (const source of found?.sources ?? []) {
+    if (targets.length >= limit || fromSearch >= 1) break
+    if (typeof source?.url === 'string' && !targets.includes(source.url)) {
+      targets.push(source.url)
+      fromSearch += 1
+    }
+  }
+  return targets.slice(0, limit)
+}
+
+/**
+ * 抓页面正文交给模型。
+ *
+ * 网页版的「读链接」同样是 DeepSeek 侧的服务端工具，第三方路由下没人执行；这里改用
+ * DSH 的 `ctx.web.fetch()`。返回数组与 `urls` 一一对应，抓不到的位置是 `undefined`，
+ * 好让调用方为每个链接各发一个失败块。单页超时 8 秒，不影响这次回答。
+ */
+export async function runFetch(ctx, route, urls, signal) {
+  const web = webOf(ctx)
+  if (web === undefined || typeof web.fetch !== 'function' || urls.length === 0) return urls.map(() => undefined)
+  try {
+    if (typeof web.fetchReady === 'function') {
+      const ready = await web.fetchReady(route.provider)
+      if (ready === false) return urls.map(() => undefined)
+    }
+  } catch {
+    return urls.map(() => undefined)
+  }
+  return await Promise.all(urls.map(async url => {
+    try {
+      const timeout = AbortSignal.timeout(8000)
+      const merged = signal === undefined ? timeout : AbortSignal.any([signal, timeout])
+      const result = await web.fetch({ url }, merged)
+      if (result === undefined || result === null) return undefined
+      if (typeof result.statusCode === 'number' && result.statusCode >= 400) return undefined
+      const raw = typeof result.body?.content === 'string' ? result.body.content : ''
+      const text = result.body?.kind === 'html' ? htmlToText(raw) : raw.replace(/\s+/g, ' ').trim()
+      if (text.length === 0) return undefined
+      return { url: typeof result.url === 'string' ? result.url : url, text: text.slice(0, 6000) }
+    } catch {
+      // 单独一页抓不到就算了
+      return undefined
+    }
+  }))
+}
+
+/** HTML 去标签取正文：去掉脚本、样式、注释，压掉多余空白。 */
+export function htmlToText(html) {
+  if (typeof html !== 'string' || html.length === 0) return ''
+  return html
+    .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, ' ')
+    .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, ' ')
+    .replace(/<!--[\s\S]*?-->/g, ' ')
+    .replace(/<\/(p|div|section|article|li|h[1-6]|tr|br)>/gi, '\n')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/[ \t\f\v]+/g, ' ')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
+}
+
+/** 抓来的正文压成上下文，和检索结果一样只是数据。 */
+export function renderFetchContext(pages) {
+  if (pages.length === 0) return ''
+  const lines = ['以下是宿主为本次提问抓取的网页正文摘录：', '需要细节时从这些摘录里取，不要凭空补全页面内容。']
+  pages.forEach((page, index) => {
+    lines.push('', `${index + 1}. ${page.url}`)
+    lines.push(page.text.slice(0, 3000))
+  })
+  return lines.join('\n')
+}
+
 /** 服务端工具块的 id 形如 `srvtoolu_s_1_<32 位 hex>`。 */
 const toolUseId = () => `srvtoolu_s_1_${randomUUID().replaceAll('-', '')}`
 
@@ -292,20 +402,11 @@ export async function streamDshReply(ctx, body, route, res) {
   const controller = new AbortController()
   res.on('close', () => controller.abort())
 
-  // 非网页版路由下 deepseek_web_search 没有执行者，改用 DSH 自己的联网检索补上；
-  // 检索失败或被取消时 found 为 undefined，这一轮照常按纯文本继续。
-  const query = searchRequested(body) ? searchQueryOf(body) : undefined
-  const found = query === undefined ? undefined : await runSearch(ctx, route, query, controller.signal)
-  const system = [browserSystem, found === undefined ? undefined : renderSearchContext(query, found)]
-    .filter(part => typeof part === 'string' && part.length > 0)
-    .join('\n\n')
-
   const options = {
     provider: route.provider,
     model: route.model,
     messages,
     signal: controller.signal,
-    ...(system.length === 0 ? {} : { system }),
     ...(effort === undefined ? {} : { reasoningEffort: effort }),
     ...(typeof body.max_tokens === 'number' ? { maxTokens: body.max_tokens } : {}),
   }
@@ -324,9 +425,13 @@ export async function streamDshReply(ctx, body, route, res) {
     },
   })
 
-  // 检索结果按网页版的服务端工具协议下发，前端才会画出「已搜索 N 个网页」那张卡片。
+  // 检索与抓取按网页版的服务端工具协议边做边发：前端先看到「正在搜索 / 打开网页」，
+  // 结果块落下来才收尾，和官方那条链路的观感一致。
   let base = 0
-  if (found !== undefined) {
+  const context = []
+  const query = searchRequested(body) ? searchQueryOf(body) : undefined
+  let found
+  if (query !== undefined) {
     const id = toolUseId()
     writeEvent(res, 'content_block_start', {
       type: 'content_block_start',
@@ -340,7 +445,7 @@ export async function streamDshReply(ctx, body, route, res) {
         kind: 'search',
       },
     })
-    writeEvent(res, 'content_block_stop', { type: 'content_block_stop', index: 0 })
+    found = await runSearch(ctx, route, query, controller.signal)
     writeEvent(res, 'content_block_start', {
       type: 'content_block_start',
       index: 1,
@@ -348,20 +453,85 @@ export async function streamDshReply(ctx, body, route, res) {
         type: 'web_search_tool_result',
         tool_use_id: id,
         kind: 'search',
-        content: found.sources.map(source => ({
-          type: 'web_search_result',
-          title: typeof source.title === 'string' && source.title.length > 0 ? source.title : source.url,
-          url: source.url,
-          snippet: typeof source.snippet === 'string' ? source.snippet : source.summary ?? '',
-          site_icon: null,
-          site_name: null,
-          page_age: null,
-          encrypted_content: '',
-        })),
+        content: found === undefined
+          ? [{ type: 'web_search_tool_result_error', error_code: 'unavailable' }]
+          : found.sources.map(source => ({
+            type: 'web_search_result',
+            title: typeof source.title === 'string' && source.title.length > 0 ? source.title : source.url,
+            url: source.url,
+            snippet: typeof source.snippet === 'string' ? source.snippet : source.summary ?? '',
+            site_icon: null,
+            site_name: null,
+            page_age: null,
+            encrypted_content: '',
+          })),
       },
     })
     writeEvent(res, 'content_block_stop', { type: 'content_block_stop', index: 1 })
     base = 2
+    if (found !== undefined) context.push(renderSearchContext(query, found))
+  }
+
+  // 网页版的「读链接」也没人执行了，改由宿主抓前几个页面，只把正文摘录交给模型。
+  const targets = readRequested(body) ? readTargets(body, found) : []
+  if (targets.length > 0) {
+    const ids = targets.map(() => toolUseId())
+    targets.forEach((url, offset) => {
+      writeEvent(res, 'content_block_start', {
+        type: 'content_block_start',
+        index: base + offset * 2,
+        content_block: {
+          type: 'server_tool_use',
+          id: ids[offset],
+          name: 'deepseek_read_url',
+          input: { action: 'read_link', url },
+          caller: { type: 'direct' },
+          kind: 'read_link',
+        },
+      })
+    })
+    const fetched = await runFetch(ctx, route, targets, controller.signal)
+    const pages = []
+    targets.forEach((url, offset) => {
+      const page = fetched[offset]
+      if (page !== undefined) pages.push(page)
+      const index = base + offset * 2
+      writeEvent(res, 'content_block_stop', { type: 'content_block_stop', index })
+      writeEvent(res, 'content_block_start', {
+        type: 'content_block_start',
+        index: index + 1,
+        content_block: page === undefined
+          ? {
+            type: 'web_fetch_tool_result',
+            tool_use_id: ids[offset],
+            kind: 'read_link',
+            content: { type: 'web_fetch_tool_result_error', error_code: 'url_not_accessible' },
+          }
+          : {
+            type: 'web_fetch_tool_result',
+            tool_use_id: ids[offset],
+            kind: 'read_link',
+            content: {
+              type: 'web_fetch_result',
+              url: page.url,
+              content: {
+                type: 'document',
+                source: { type: 'text', media_type: 'text/plain', data: page.text.slice(0, 2000) },
+                title: null,
+              },
+              published_at: null,
+            },
+          },
+      })
+      writeEvent(res, 'content_block_stop', { type: 'content_block_stop', index: index + 1 })
+    })
+    base += targets.length * 2
+    if (pages.length > 0) context.push(renderFetchContext(pages))
+  }
+
+  if (context.length > 0) {
+    const system = [browserSystem, ...context].filter(part => typeof part === 'string' && part.length > 0).join('\n\n')
+    options.system = system
   }
 
   let usage
