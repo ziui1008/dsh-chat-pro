@@ -52,6 +52,10 @@ test('内网与云元数据地址不放行', () => {
     'http://[::1]/',
     'http://0.0.0.0/',
     'https://foo.local/',
+    'http://localhost./',
+    'https://metadata.google.internal/',
+    'http://[::ffff:127.0.0.1]/',
+    'http://[2001:db8::1]/',
   ]) {
     assert.equal(isFetchableUrl(url), false, url)
   }

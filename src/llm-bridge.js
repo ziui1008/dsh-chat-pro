@@ -460,9 +460,11 @@ export function isFetchableUrl(value) {
 
 /** Loopback and link-local names the provider would refuse anyway; refuse them with a clear reason. */
 function isPrivateHost(hostname) {
-  const host = hostname.toLowerCase()
+  const host = hostname.toLowerCase().replace(/\.$/, '')
   if (host === 'localhost' || host.endsWith('.localhost') || host.endsWith('.local')) return true
-  if (host === '[::1]' || host === '::1') return true
+  if (host.endsWith('.internal')) return true
+  // 方括号里的 IPv6 字面量一律不读：混合写法（::ffff:127.0.0.1）太容易漏，公开站点很少只有 IPv6。
+  if (host.includes(':')) return true
   if (host === '0.0.0.0') return true
   const ipv4 = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(host)
   if (ipv4 === null) return false
