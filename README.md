@@ -3,9 +3,9 @@
   <h1>chat-in-dsh</h1>
   <p><strong>在 DeepSeek Harness（DSH）里，用原汁原味的网页版对话。</strong></p>
   <p>
-    <a href="https://www.npmjs.com/package/chat-in-dsh"><img alt="npm" src="https://img.shields.io/npm/v/chat-in-dsh?style=flat-square" /></a>
-    <a href="https://github.com/YinkaiYu/chat-in-dsh/actions/workflows/test.yml"><img alt="Test" src="https://img.shields.io/github/actions/workflow/status/YinkaiYu/chat-in-dsh/test.yml?style=flat-square" /></a>
-    <a href="https://github.com/YinkaiYu/chat-in-dsh/releases"><img alt="Release" src="https://img.shields.io/github/v/release/YinkaiYu/chat-in-dsh?style=flat-square" /></a>
+    <img alt="version" src="https://img.shields.io/badge/version-0.6.0-2F6FEB?style=flat-square" />
+    <a href="https://github.com/ziui1008/dsh-chat-pro/actions/workflows/test.yml"><img alt="Test" src="https://img.shields.io/github/actions/workflow/status/YinkaiYu/chat-in-dsh/test.yml?style=flat-square" /></a>
+    <a href="https://github.com/ziui1008/dsh-chat-pro/releases"><img alt="Release" src="https://img.shields.io/github/v/release/YinkaiYu/chat-in-dsh?style=flat-square" /></a>
     <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/github/license/YinkaiYu/chat-in-dsh?style=flat-square" /></a>
     <img alt="基于官方 chat-demo" src="https://img.shields.io/badge/%E5%9F%BA%E4%BA%8E-%E5%AE%98%E6%96%B9%20chat--demo-2F6FEB?style=flat-square" />
     <a href="https://github.com/deepseek-ai/deepseek-harness"><img alt="powered by dsh" src="https://img.shields.io/badge/powered_by-dsh-4D6BFE?style=flat-square&logo=deepseek&logoColor=white" /></a>
@@ -39,7 +39,7 @@
 
 <img src="docs/assets/dsh-2.png" width="760" alt="点添加插件">
 
-**3. 填包名 `chat-in-dsh`（或粘贴仓库地址），点「安装」**
+**3. 粘贴仓库地址 `https://github.com/ziui1008/dsh-chat-pro`（或填包名 `chat-in-dsh`），点「安装」**
 
 <img src="docs/assets/dsh-3.png" width="760" alt="填写包名并安装">
 
