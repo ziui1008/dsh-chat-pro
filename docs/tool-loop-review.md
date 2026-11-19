@@ -62,13 +62,28 @@
 
 ## 6. 验证记录
 
-- 单测：`test/llm-tools.test.js`（11 例，工具集、参数容错、URL 闸门、执行失败）+ `test/llm-loop.test.js`（5 例，假 `ctx.get('llm')` 脚本化多轮：工具回灌后出正文、预算耗尽最后一轮无工具、直接回答不发工具块、工具失败仍继续、只声明 read_url 时只给一个工具、块索引唯一递增）。合计 41 项全过。
+- 单测：`test/llm-tools.test.js`（12 例，工具集、参数容错、URL 闸门、执行失败）+ `test/llm-loop.test.js`（15 例，假 `ctx.get('llm')` 脚本化多轮：工具回灌后出正文、预算耗尽最后一轮无工具、直接回答不发工具块、工具失败仍继续、只声明 read_url 时只给一个工具、块索引唯一递增、供应商不认 tools 时去工具重试、单轮超额只执行 4 次、readiness 过滤、缺失工具如实告知、友好错误文案）。全仓合计 **51 项全过**。
 - 接口实跑（nume / gpt-6.2-sol）：
   - 「北京天气」→ `text, server_tool_use, web_search_tool_result, server_tool_use, web_fetch_tool_result, server_tool_use, web_search_tool_result, server_tool_use, web_search_tool_result, text`，22 s，答案带 weather.com.cn 的预警与气温，说明模型确实读了页面。
   - 「你好」+ 两个工具 → 只有 `text`，5 s，没有多余的检索。
   - 关掉搜索只留 `read_url` → 模型仍自己打开 weather.com.cn 拿到气温。
   - deepseek-account + thinking + 工具 → `thinking, 检索, thinking, 抓取, thinking, text`，跨轮思考块与工具块索引都对得上。
 - 面板实跑：「帮我查一下今天上海天气」→ 正文、10 个网页的来源卡片、带日期的表格与穿衣建议；「深度思考」开着时思考块正常折叠。
+
+### 6.1 极端场景矩阵
+
+脚本 `scripts/extreme-probes.py`（需要本机 DSH 在跑，默认打 `127.0.0.1:60627`，`WEBCHAT_URL` 可覆盖；不进 CI，因为要真模型和真网络），每条都是对 `POST /webchat/anthropic/v1/messages` 的真实请求。
+
+| 场景 | 结果 | 结论 |
+| --- | --- | --- |
+| `max_tokens=40` / `=8` + 两个工具 | 仍完成 1–4 次工具调用并出正文；`=8` 时 66.8 s、4 次抓取后收尾 | 预算与截止时间都生效，没有卡死；工具参数被截断时按空参数处理，不抛异常 |
+| 未知供应商 `provider:"nope"` | 0.0 s 收到 `event: error`「这个模型所在的供应商现在不可用，请在右下角的模型胶囊里换一个。」 | 配置类错误不再把 `no adapter registered…` 泄露给用户 |
+| 模型名不存在 | 同上，文案换成「这个模型已经不在 DSH 的配置里了」 | 同上 |
+| 并发两路相同请求 | 两路都正常，31.8 s / 42.1 s，块序列与索引各自独立 | 没有共享可变状态 |
+| 让模型读 `http://127.0.0.1:60627/webchat/` | 回 `web_fetch_tool_result_error: url_not_accessible`，模型改用已有信息作答 | URL 闸门在真实链路上生效，没有发生内网抓取 |
+| 客户端 1.5 s 后断开连接 | 无异常；随后的健康请求 7.2 s 正常返回 | `res.on('close')` → `AbortController.abort()` 链路可用 |
+| 连续 5 次快问快答 | 3.9–28 s，无累积变慢、无错误 | 无常驻状态泄漏 |
+| 搜索/抓取服务未就绪 | 请求里不带该工具，system 追加「本次会话的联网检索暂时不可用……不要编造内容」 | 关闭的能力不会变成静默的假象 |
 
 ## 7. 发布前建议
 

@@ -167,9 +167,10 @@ export function renderSearchContext(query, result) {
   for (const source of result.sources ?? []) {
     index += 1
     const title = typeof source.title === 'string' && source.title.length > 0 ? source.title : source.url
-    const excerpt = typeof source.snippet === 'string' && source.snippet.length > 0
+    const raw = typeof source.snippet === 'string' && source.snippet.length > 0
       ? source.snippet
       : typeof source.summary === 'string' ? source.summary : ''
+    const excerpt = raw.length > 300 ? `${raw.slice(0, 300)}…` : raw
     lines.push('', `${index}. ${title}`, `   ${source.url}`, ...(excerpt.length > 0 ? [`   ${excerpt}`] : []))
   }
   if (typeof result.content === 'string' && result.content.trim().length > 0) {
@@ -382,6 +383,8 @@ const STOP_REASON = {
 const MAX_ROUNDS = 3
 /** Total tool calls allowed for one reply, so a hostile page cannot drive an endless crawl. */
 const MAX_TOOL_CALLS = 4
+/** Whole-reply wall clock budget; four model turns plus fetches sit far below it. */
+const DEADLINE_MS = 180_000
 
 const TOOL_SEARCH = {
   name: 'web_search',
@@ -423,6 +426,60 @@ export function toolNamesOf(body) {
  * The browser always declares `deepseek_read_url`; `deepseek_web_search` only when the search
  * toggle is on. Passing the same set to the model keeps the UI honest: no pill, no tool.
  */
+/**
+ * Tools this machine can actually run right now.
+ *
+ * `searchReady` / `fetchReady` are cheap checks; offering a tool that always fails wastes a
+ * round and teaches the model nothing useful.
+ */
+export async function toolAvailability(ctx, route, body) {
+  const wanted = hostTools(body)
+  if (wanted.length === 0) return { tools: [], missing: [] }
+  const web = webOf(ctx)
+  if (web === undefined) return { tools: [], missing: wanted.map(tool => tool.name) }
+  const ready = { web_search: true, read_url: true }
+  try {
+    if (typeof web.searchReady === 'function') ready.web_search = (await web.searchReady(route.provider)) !== false
+    else ready.web_search = false
+  } catch {
+    ready.web_search = false
+  }
+  try {
+    if (typeof web.fetchReady === 'function') ready.read_url = (await web.fetchReady(route.provider)) !== false
+    else ready.read_url = false
+  } catch {
+    ready.read_url = false
+  }
+  return {
+    tools: wanted.filter(tool => ready[tool.name] === true),
+    missing: wanted.filter(tool => ready[tool.name] !== true).map(tool => tool.name),
+  }
+}
+
+export async function offeredTools(ctx, route, body) {
+  return (await toolAvailability(ctx, route, body)).tools
+}
+
+/**
+ * 声音要诚实：工具没给出去时，模型不能假装查过。
+ */
+function unavailableNote(missing) {
+  if (missing.length === 0) return undefined
+  const names = missing.map(name => (name === 'web_search' ? '联网检索' : '打开网页')).join('和')
+  return `本次会话的${names}暂时不可用（宿主侧服务没有就绪）。如果用户要求检索或打开网页，请直接说明现在做不到，不要编造内容。`
+}
+
+/**
+ * 把供应商层面的配置问题换成用户能看懂的话；原始文案留给日志。
+ */
+export function friendlyFailure(message) {
+  if (typeof message !== 'string') return '这次回答失败了，请重试。'
+  if (/no adapter registered for provider/i.test(message)) return '这个模型所在的供应商现在不可用，请在右下角的模型胶囊里换一个。'
+  if (/has no configured model/i.test(message)) return '这个模型已经不在 DSH 的配置里了，请在模型胶囊里重新选一个。'
+  if (/api key|unauthorized|401/i.test(message)) return '这个供应商的凭据不可用，请检查 DSH 里的供应商配置。'
+  return message.length > 300 ? `${message.slice(0, 300)}…` : message
+}
+
 export function hostTools(body) {
   const names = new Set(toolNamesOf(body))
   return [
@@ -716,9 +773,20 @@ export async function streamDshReply(ctx, body, route, res) {
     throw error
   }
   const effort = effortFor(route, thinking, efforts)
-  const tools = hostTools(body)
   const controller = new AbortController()
   res.on('close', () => controller.abort())
+  // 一次回答的整体上限：四轮模型调用加抓取，正常远低于这个数；挡住供应商发疯的情况。
+  let timedOut = false
+  const deadline = AbortSignal.timeout(DEADLINE_MS)
+  deadline.addEventListener('abort', () => {
+    timedOut = true
+    controller.abort()
+  })
+  const signal = AbortSignal.any([controller.signal, deadline])
+  const availability = await toolAvailability(ctx, route, body)
+  const tools = availability.tools
+  const note = unavailableNote(availability.missing)
+  const systemWithNote = [system, note].filter(Boolean).join('\n\n')
 
   res.writeHead(200, {
     'content-type': 'text/event-stream; charset=utf-8',
@@ -743,16 +811,17 @@ export async function streamDshReply(ctx, body, route, res) {
 
   try {
     // 最后一轮不给工具：预算用完时必须让模型把答案写出来，而不是再调一次工具就收尾。
+    let toolsBroken = false
     for (let round = 0; round <= MAX_ROUNDS; round++) {
-      if (controller.signal.aborted) break
-      const offerTools = round < MAX_ROUNDS && calls < MAX_TOOL_CALLS && tools.length > 0
+      if (signal.aborted) break
+      const offerTools = !toolsBroken && round < MAX_ROUNDS && calls < MAX_TOOL_CALLS && tools.length > 0
       const options = {
         provider: route.provider,
         model: route.model,
         messages: convo,
-        signal: controller.signal,
+        signal,
         ...(offerTools ? { tools } : {}),
-        ...(typeof system === 'string' && system.length > 0 ? { system } : {}),
+        ...(systemWithNote.length > 0 ? { system: systemWithNote } : {}),
         ...(effort === undefined ? {} : { reasoningEffort: effort }),
         ...(typeof body.max_tokens === 'number' ? { maxTokens: body.max_tokens } : {}),
       }
@@ -764,6 +833,12 @@ export async function streamDshReply(ctx, body, route, res) {
         break
       }
       if (turn.toolCalls.length === 0) {
+        // 这一轮什么都没产出，多半是这个供应商不认 tools：去掉工具再试一次，别让用户收到空白回答。
+        if (turn.content.length === 0 && round === 0 && offerTools && !signal.aborted) {
+          toolsBroken = true
+          round -= 1
+          continue
+        }
         stopReason = STOP_REASON[turn.finishReason?.kind] ?? 'end_turn'
         break
       }
@@ -789,7 +864,7 @@ export async function streamDshReply(ctx, body, route, res) {
           continue
         }
         calls++
-        const opSignal = AbortSignal.any([controller.signal, AbortSignal.timeout(20_000)])
+        const opSignal = AbortSignal.any([signal, AbortSignal.timeout(20_000)])
         const result = await executeTool(ctx, route, call, opSignal)
         writeEvent(res, 'content_block_start', {
           type: 'content_block_start',
@@ -820,7 +895,10 @@ export async function streamDshReply(ctx, body, route, res) {
   }
 
   if (failure !== undefined && !res.writableEnded) {
-    writeEvent(res, 'error', { type: 'error', error: { type: 'api_error', message: failure } })
+    const message = timedOut
+      ? '这次回答超过了 180 秒的时间上限，请重试或换一个更快的模型。'
+      : friendlyFailure(failure)
+    writeEvent(res, 'error', { type: 'error', error: { type: 'api_error', message } })
     res.end()
     return
   }

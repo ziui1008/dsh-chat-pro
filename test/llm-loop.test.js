@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
-import { streamDshReply } from '../src/llm-bridge.js'
+import { friendlyFailure, offeredTools, renderSearchContext, streamDshReply, toolAvailability } from '../src/llm-bridge.js'
 
 /** Minimal ServerResponse stand-in that records the SSE events written to it. */
 function fakeResponse() {
@@ -27,19 +27,24 @@ function fakeResponse() {
 }
 
 /** Build a fake ctx whose llm replays one scripted turn per round. */
-function fakeContext(turns) {
+function fakeContext(turns, ready = {}) {
   let round = 0
   const seen = []
   const web = {
-    searchReady: async () => true,
+    searchReady: async () => ready.search !== false,
     search: async () => ({ truncated: false, sources: [{ url: 'https://example.com/a', title: 'A', snippet: 'aa' }] }),
-    fetchReady: async () => true,
+    fetchReady: async () => ready.fetch !== false,
     fetch: async () => ({ url: 'https://example.com/a', statusCode: 200, body: { kind: 'html', content: '<p>正文</p>' } }),
   }
   const llm = {
     resolveModelInfo: async () => ({ reasoning: undefined }),
     async *stream(options) {
-      seen.push({ round, tools: Array.isArray(options.tools) ? options.tools.length : 0 })
+      seen.push({
+        round,
+        tools: Array.isArray(options.tools) ? options.tools.length : 0,
+        toolNames: Array.isArray(options.tools) ? options.tools.map(tool => tool.name) : [],
+        system: options.system,
+      })
       const scripted = turns[round++] ?? [{ type: 'text', text: 'end' }]
       // 没有工具可调时，假模型只能给出正文——和真实供应商的行为一致。
       const turn = options.tools === undefined ? [{ type: 'text', text: '结论。' }] : scripted
@@ -148,4 +153,84 @@ test('只声明 read_url 时不提供检索工具', async () => {
   await streamDshReply(ctx, { ...body, tools: [{ name: 'deepseek_read_url' }] }, route, res)
 
   assert.equal(seen[0].tools, 1)
+})
+
+test('供应商不认 tools 时去掉工具重试一次', async () => {
+  const { ctx, seen } = fakeContext([[], [{ type: 'text', text: '照常回答。' }]])
+  const res = fakeResponse()
+  await streamDshReply(ctx, body, route, res)
+
+  assert.deepEqual(seen.map(entry => entry.tools), [2, 0])
+  const text = res.events.filter(event => event.type === 'content_block_delta').map(event => event.delta.text).join('')
+  assert.equal(text, '结论。')
+})
+
+test('一轮里超额的调用不执行，只回一条预算提示', async () => {
+  const many = ['a', 'b', 'c', 'd', 'e'].map(id => ({ type: 'tool', id: `call_${id}`, name: 'web_search', args: { query: id } }))
+  const { ctx } = fakeContext([many, [{ type: 'text', text: '收尾。' }]])
+  const res = fakeResponse()
+  await streamDshReply(ctx, body, route, res)
+
+  const starts = res.events.filter(event => event.type === 'content_block_start')
+  assert.equal(starts.filter(event => event.content_block.type === 'server_tool_use').length, 4)
+  assert.equal(starts.filter(event => event.content_block.type === 'web_search_tool_result').length, 4)
+  assert.equal(starts.filter(event => event.content_block.type === 'text').length, 1)
+})
+
+test('检索与抓取都不可用时一个工具都不提供', async () => {
+  const ctx = { get: () => ({ searchReady: async () => false, fetchReady: async () => false }) }
+  assert.deepEqual(await offeredTools(ctx, route, body), [])
+})
+
+test('只有检索可用时仍提供 read_url 之外的工具集', async () => {
+  const ctx = { get: () => ({ searchReady: async () => true, fetchReady: async () => false }) }
+  const tools = await offeredTools(ctx, route, body)
+  assert.deepEqual(tools.map(tool => tool.name), ['web_search'])
+})
+
+test('没有 web 服务时不给任何工具', async () => {
+  assert.deepEqual(await offeredTools({ get: () => undefined }, route, body), [])
+})
+
+test('检索摘要过长会截断', () => {
+  const text = renderSearchContext('q', {
+    sources: [{ url: 'https://e.com', title: 'T', snippet: 'x'.repeat(900) }],
+  })
+  assert.equal(text.includes('x'.repeat(301)), false)
+  assert.equal(text.includes('…'), true)
+})
+
+test('工具不可用时要如实告知，而不是让模型假装查过', async () => {
+  const { ctx, seen } = fakeContext([[{ type: 'text', text: '现在查不了。' }]], { search: false })
+  const res = fakeResponse()
+  await streamDshReply(ctx, body, route, res)
+
+  assert.deepEqual(seen[0].toolNames, ['read_url'])
+  assert.match(seen[0].system, /联网检索暂时不可用/)
+})
+
+test('两个工具都不可用时不带工具调用模型', async () => {
+  const { ctx, seen } = fakeContext([[{ type: 'text', text: '好。' }]], { search: false, fetch: false })
+  const res = fakeResponse()
+  await streamDshReply(ctx, body, route, res)
+  assert.equal(seen[0].tools, 0)
+  assert.match(seen[0].system, /联网检索和打开网页暂时不可用/)
+})
+
+test('toolAvailability 报告缺失的工具名', async () => {
+  const available = await toolAvailability(
+    { get: () => ({ searchReady: async () => true, fetchReady: async () => false }) },
+    route,
+    body,
+  )
+  assert.deepEqual(available.tools.map(tool => tool.name), ['web_search'])
+  assert.deepEqual(available.missing, ['read_url'])
+})
+
+test('供应商配置类错误换成用户看得懂的话', () => {
+  assert.match(friendlyFailure('no adapter registered for provider "nope"'), /供应商现在不可用/)
+  assert.match(friendlyFailure('pi-ai provider "nume" has no configured model "x"'), /已经不在 DSH 的配置里/)
+  assert.match(friendlyFailure('401 Unauthorized: invalid api key'), /凭据不可用/)
+  assert.equal(friendlyFailure('socket hang up'), 'socket hang up')
+  assert.equal(friendlyFailure('x'.repeat(400)).length, 301)
 })
