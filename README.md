@@ -1,83 +1,109 @@
-<div align="center">
-  <img src="icon.svg" width="88" alt="chat-in-dsh 图标" />
-  <h1>chat-in-dsh</h1>
-  <p><strong>在 DeepSeek Harness（DSH）里，用原汁原味的网页版对话。</strong></p>
-  <p>
-    <img alt="version" src="https://img.shields.io/badge/version-0.6.0-2F6FEB?style=flat-square" />
-    <a href="https://github.com/ziui1008/dsh-chat-pro/actions/workflows/test.yml"><img alt="Test" src="https://img.shields.io/github/actions/workflow/status/YinkaiYu/chat-in-dsh/test.yml?style=flat-square" /></a>
-    <a href="https://github.com/ziui1008/dsh-chat-pro/releases"><img alt="Release" src="https://img.shields.io/github/v/release/YinkaiYu/chat-in-dsh?style=flat-square" /></a>
-    <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/github/license/YinkaiYu/chat-in-dsh?style=flat-square" /></a>
-    <img alt="基于官方 chat-demo" src="https://img.shields.io/badge/%E5%9F%BA%E4%BA%8E-%E5%AE%98%E6%96%B9%20chat--demo-2F6FEB?style=flat-square" />
-    <a href="https://github.com/deepseek-ai/deepseek-harness"><img alt="powered by dsh" src="https://img.shields.io/badge/powered_by-dsh-4D6BFE?style=flat-square&logo=deepseek&logoColor=white" /></a>
-  </p>
-</div>
+# chat-in-dsh
 
-## 为什么需要它
+把 DeepSeek 官网那套对话界面搬进 DeepSeek Harness 的左侧面板，并且让它能用上 DSH 里已经配好的模型。
 
-2026 年 11 月 16 日，DeepSeek App 和网页端开始限额，不少用户因此转到 DeepSeek Harness。这部分用户需要的是聊天、写作、问答，而 DSH 默认是给开发者准备的形态：每次对话内置了几千字的系统提示词和工具注入，于是，模型变成了一个「老实」的打工人，却失去了原本网页版对话的那种「灵气」。写作和聊天时，这个差别尤为明显。
+<p>
+  <img alt="version" src="https://img.shields.io/badge/version-0.6.1-2F6FEB?style=flat-square" />
+  <a href="https://github.com/ziui1008/dsh-chat-pro/actions/workflows/test.yml"><img alt="test" src="https://github.com/ziui1008/dsh-chat-pro/actions/workflows/test.yml/badge.svg" /></a>
+  <a href="LICENSE"><img alt="license" src="https://img.shields.io/badge/license-MIT-2EA043?style=flat-square" /></a>
+  <a href="https://github.com/deepseek-ai/chat-demo"><img alt="upstream" src="https://img.shields.io/badge/upstream-chat--demo-555?style=flat-square" /></a>
+</p>
 
-本插件在 DSH 里加一个独立面板，面板里就是原汁原味的 DeepSeek 网页版本身：官方极简系统提示词、官方的服务端工具、官方界面。在这小小的一方天地，只有 DeepSeek，没有 Harness，它不再被工具束缚，也不再有限额（通过API计费），它与你之间不再有可悲的厚障壁。
+## 它解决什么问题
 
-## 你能得到什么
+DSH 的对话是给编程代理准备的：几千字的系统提示词、一堆工具定义，模型被约束成一个执行任务的工人。写东西、闲聊、问点生活问题的时候，这套设定反而碍事。
 
-- **原汁原味**：界面就是 DeepSeek 官方开源的那份前端，交互、排版、动效都没改
-- **不用填 API Key**：直接用 DSH 里已经登录的 DeepSeek 账户
-- **不受官网限额影响**：请求走 API
-- **能力齐全**：智能搜索、深度思考、引用角标、公式、图表、深色模式
-- **能从 DSH 带对话过来**：任意会话右键「导入到网页版」，复制一份接着聊
-- **能借用 DSH 里的其它模型**：右下角切换供应商、模型与思考档位，同一份界面继续用
+这个插件在 DSH 里开一个独立面板，面板里跑的是 DeepSeek 官方开源前端 `chat-demo` 的构建产物 —— 官方那份界面、那份系统提示词、那套服务端工具，跟 DSH 的会话完全隔离。同时加了一个模型桥：面板右下角可以把请求切到 DSH 里配好的任意供应商和模型，不用另填 API Key。
+
+## 功能
+
+- **界面是原版**：官方前端的交互、排版、动效没有改动，只换了请求落点和左上角标识。
+- **不用 API Key**：请求由宿主用 DSH 当前登录的 DeepSeek 账户换 token 代发。
+- **存储独立**：面板的会话存在浏览器 IndexedDB 里，与 DSH 的会话日志互不影响，删一边不牵连另一边。
+- **从 DSH 搬对话**：任意会话右键 →「导入到网页版」，复制一份过来接着聊（一次性复制）。
+- **借用其它模型**：右下角胶囊按供应商列出 DSH 里的模型，同一张浮层里切思考档位。
+- **官方能力都在**：深度思考、联网搜索、引用角标、公式、图表、深色模式。
 
 ## 安装
 
-**1. 打开左侧的「插件」页**
-
-**2. 点右上角的「添加插件」**
-
-**3. 粘贴仓库地址 `https://github.com/ziui1008/dsh-chat-pro`，点「安装」**
-
-**4. 装好后点「立即启用」**
-
-之后左侧面板列表里会多出「网页版」。
+1. 打开 DSH 左侧的「插件」页，点右上角「添加插件」。
+2. 填仓库地址 `https://github.com/ziui1008/dsh-chat-pro`，点「安装」。
+3. 装好后点「立即启用」，左侧面板列表里会多出「网页版」。
 
 ## 使用
 
-点左侧面板列表里的「网页版」：
+- 点左侧「网页版」打开面板；想让聊天区更宽，点左上角按钮收起 DSH 的会话栏。
+- 传文件、语音、导出历史等功能都是官方前端自带的，位置没变。
+- 想把 DSH 里的某段对话带过来：在左侧会话列表右键 →「导入到网页版」，再切到面板，它会出现在列表里。
+- 换模型：点输入框下方的模型胶囊 → 选供应商下的模型 → 需要的话在浮层底部选思考档位。选择记在浏览器本地，下次打开还是它。
 
-如果想专心聊天，点左上角这个按钮把 DSH 的会话栏收起来：
+关掉输入框左上角的「深度思考」时，档位不参与请求；这也是官方前端的行为。
 
-收起之后就是完整的网页版界面：
+## 模型桥是怎么工作的
 
-面板里有自己的会话列表，和 DSH 的会话分开管理。
+浏览器发出的仍是 DeepSeek 的 Anthropic 兼容请求（`POST /webchat/anthropic/v1/messages`），宿主根据请求体决定往哪儿发：
 
-## 把对话搬进来
+| 请求体 | 宿主行为 |
+| --- | --- |
+| 没有 `dsh` 字段，或 `dsh.provider` 是 `webchat` | 换真 token 后转发给 `https://api.deepseek.com/anthropic`（网页版原路径） |
+| 带 `dsh: { provider, model, effort }` | 转成 `ctx.llm.stream()` 调用，再把 chunk 翻回 Anthropic SSE 交给前端 |
 
-**从 DeepSeek 官网搬**
+模型目录来自 `GET /webchat/api/catalog`：宿主依次调 `ctx.llm.listProviders()`、`listModels()`、`resolveModelInfo()`，把供应商、模型名和各自声明的思考档位拼成前端要的结构。
 
-1. 打开 chat.deepseek.com，点「设置 → 数据管理 → 导出所有历史对话」，下载生成的 ZIP（文件名形如 `deepseek_data-2026xxxx.zip`）。
-2. 在面板左下角点「设置」→「数据管理」→「导入历史对话」，选中这个 ZIP。
+翻译只做结构转换，不动内容：`system`、消息、附件都由浏览器构造，宿主不拼接提示词，`x-api-key` 一律丢弃。
 
-这个入口会覆盖面板里现有的全部对话，建议先把要导入的导完，再开始新的对话。
+## 配置
 
-**从 DSH 搬**
+`cordis.patch.yml` 里的 `baseURL` 可以改上游端点，也可以用环境变量 `DEEPSEEK_BASE_URL`；宿主会自动补 `/v1`。留空则用默认的 `https://api.deepseek.com/anthropic`。
 
-在左侧会话列表里右键任意一条 →「导入到网页版」，那份对话会复制一份进来，之后两边各自独立。
+## 已知限制
 
-## 换成 DSH 里的其它模型
+- 图片、文件附件、联网搜索工具只在「DeepSeek 网页版」这条路径可用。选中第三方模型时发附件会直接报错提示，不会静默丢内容。
+- 第三方模型有没有思考块，取决于供应商是否真的返回 reasoning 内容。
+- 导入只搬文字和思考：工具调用、图片、系统提醒会被丢掉。
+- 会话格式绑在 DSH 的 `session.v4.jsonl[.zstd]` 上，DSH 换格式后导入会失效。
 
-面板默认走「DeepSeek 网页版」，也就是官方前端的原样体验。如果 DSH 里还配置了别的供应商（比如 `llm-pi-ai` 下的第三方模型），可以点输入框右下角的模型胶囊切换：
+## 安全边界
 
-1. 点「DeepSeek Flash ⌄」，面板按供应商分组列出 DSH 当前可用的模型；
-2. 选中模型后，同一张浮层底部会出现「思考档位」，按该模型声明的档位切换（关掉左上角「深度思考」时不使用档位）；
-3. 选择存在浏览器本地，下次打开还是这个模型。
+`/webchat` 下的路由没有额外的鉴权，也没有 Origin / CSRF 校验 —— 它假设只有本机能访问 DSH 的 web 端口。默认情况下 DSH 桌面版用 `--port 0` 起服务、窗口走 `dsh-app://app` 反代，不会暴露到局域网；但如果你手动把 web server 绑到 `0.0.0.0` 或对公网做了端口映射，同网段的人就能借你的账户发请求、读暂存里的会话内容。
 
-选中非网页版模型时，请求由 DSH 的模型服务代发，前端仍然是官方那一份；`/webchat/api/messages` 这层只做请求形状转换，不拼接提示词。图片、文件附件与网页版的联网搜索工具目前只在「DeepSeek 网页版」下可用，选了其它模型时发附件会提示先切回去。
+请不要把 DSH 的 web 端口暴露到公网。导入确认接口的 `ids` 参数目前没有做路径消毒，这也是待修项。
 
-## 关于可靠性
+## 开发
 
-这个插件基于 DeepSeek 官方开源的 [chat-demo](https://github.com/deepseek-ai/chat-demo) 开发。我们对它的改动很少：请求发往哪里、左上角的标识、藏起 API Key 输入框，以及右下角那个模型切换胶囊。界面、交互、请求逻辑都是官方原版；切到 DSH 模型时，也只是把同一份请求体翻译成 DSH 的模型调用。
+```bash
+git clone https://github.com/ziui1008/dsh-chat-pro.git chat-in-dsh
+cd chat-in-dsh
+node --test test/protocol.test.js test/dsh-import.test.js test/llm-bridge.test.js
+```
 
-没有二次包装，也没有替你「优化」提示词——模型拿到的就是网页上那一份。
+前端是上游 `chat-demo` 加一个补丁构建出来的：
+
+```powershell
+pwsh scripts/build-webview.ps1
+```
+
+脚本会把上游仓库克隆到 `webview/vendor/chat-demo`、切到指定提交、打上 `webview/patches/0001-dsh-integration.patch`、构建并把产物同步到 `webview/dist`。
+
+改了宿主代码（`index.js`、`src/`）需要重新加载插件才生效；只改 `client.js` 或 `webview/dist` 时刷新页面即可。
+
+## 目录
+
+| 路径 | 作用 |
+| --- | --- |
+| `index.js` | 插件入口，注册 `/webchat` 前缀路由 |
+| `src/webview.js` | 静态资源、`/webchat/api/*`、Messages / Files 转发入口 |
+| `src/llm-bridge.js` | 模型目录与 DSH 模型调用之间的翻译层 |
+| `src/dsh-import.js` | 只读解析 DSH 会话日志、暂存与确认 |
+| `src/protocol.js` | 端点根、令牌头、路径越界判断 |
+| `client.js` | 左侧面板槽位与「导入到网页版」右键菜单 |
+| `webview/dist` | 上游前端的构建产物 |
+| `test/` | 协议、导入、模型桥的单元测试 |
 
 ## 致谢
 
-界面、交互和请求逻辑来自 DeepSeek 官方开源的 [chat-demo](https://github.com/deepseek-ai/chat-demo)（MIT），插件宿主依赖 [DeepSeek Harness](https://github.com/deepseek-ai) 的 web server、槽位与模型服务。这两部分版权归 DeepSeek 所有，对应许可证见 `webview/dist/LICENSE` 与 [NOTICE](NOTICE)；完整的贡献名单见 [CONTRIBUTORS.md](CONTRIBUTORS.md)。
+界面与请求逻辑来自 [chat-demo](https://github.com/deepseek-ai/chat-demo)（MIT，Copyright (c) 2026 DeepSeek），宿主接口来自 DeepSeek Harness。完整署名与许可证说明见 [CONTRIBUTORS.md](CONTRIBUTORS.md) 与 [NOTICE](NOTICE)。
+
+## 许可
+
+[MIT](LICENSE)
