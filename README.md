@@ -3,7 +3,7 @@
 把 DeepSeek 官网那套对话界面搬进 DeepSeek Harness 的左侧面板，并且让它能用上 DSH 里已经配好的模型。
 
 <p>
-  <img alt="version" src="https://img.shields.io/badge/version-1.1.0-2F6FEB?style=flat-square" />
+  <img alt="version" src="https://img.shields.io/badge/version-1.1.1-2F6FEB?style=flat-square" />
   <a href="https://github.com/ziui1008/dsh-chat-pro/actions/workflows/test.yml"><img alt="test" src="https://github.com/ziui1008/dsh-chat-pro/actions/workflows/test.yml/badge.svg" /></a>
   <a href="LICENSE"><img alt="license" src="https://img.shields.io/badge/license-MIT-2EA043?style=flat-square" /></a>
   <a href="https://github.com/deepseek-ai/chat-demo"><img alt="upstream" src="https://img.shields.io/badge/upstream-chat--demo-555?style=flat-square" /></a>
@@ -28,6 +28,7 @@
 - **存储独立**：面板的会话存在浏览器 IndexedDB 里，与 DSH 的会话日志互不影响，删一边不牵连另一边。
 - **从 DSH 搬对话**：任意会话右键 →「导入到网页版」，复制一份过来接着聊（一次性复制）。
 - **借用其它模型**：右下角胶囊按供应商列出 DSH 里的模型，同一张浮层里切思考档位；首条消息的标题也由当前模型来起。
+- **动效克制**：消息入场、浮层展开、按钮按下都有一点位移与缩放，切面板时面板整体淡入；系统开了「减少动效」就全部关掉。
 - **官方能力都在**：深度思考、联网搜索、引用角标、公式、图表、深色模式。
 
 ## 安装

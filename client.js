@@ -20,6 +20,20 @@ window.__ModuleLoader__.load({
       for (const listener of importBus.listeners) listener(importBus.token)
     }
 
+    // 面板初次挂载时淡入，和宿主切换面板的动作对齐；尊重系统的减少动效设置。
+    const PANEL_STYLE_ID = 'dsh-chat-pro-panel-style'
+    const ensurePanelStyle = () => {
+      if (typeof document === 'undefined' || document.getElementById(PANEL_STYLE_ID) !== null) return
+      const style = document.createElement('style')
+      style.id = PANEL_STYLE_ID
+      style.textContent = [
+        '@keyframes dsh-chat-pro-in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}',
+        '.dsh-chat-pro-panel{animation:dsh-chat-pro-in .22s cubic-bezier(.4,0,.2,1) both}',
+        '@media (prefers-reduced-motion: reduce){.dsh-chat-pro-panel{animation:none}}',
+      ].join('')
+      document.head.append(style)
+    }
+
     const frame = (key, src, title) => h('iframe', {
       key,
       src,
@@ -30,13 +44,17 @@ window.__ModuleLoader__.load({
 
     /** 左侧面板：完整的网页版，带它自己的会话列表。 */
     function Panel() {
+      ensurePanelStyle()
       const [token, setToken] = React.useState(importBus.token)
       React.useEffect(() => {
         const listener = (value) => setToken(value)
         importBus.listeners.add(listener)
         return () => importBus.listeners.delete(listener)
       }, [])
-      return h('div', { style: { height: '100%', minHeight: 320, display: 'flex' } },
+      return h('div', {
+        className: 'dsh-chat-pro-panel',
+        style: { height: '100%', minHeight: 320, display: 'flex' },
+      },
         h('div', { style: { flex: 1, minWidth: 0 } }, frame(token, '/webchat/', 'DeepSeek 网页版')))
     }
 
