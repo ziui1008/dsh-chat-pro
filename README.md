@@ -33,7 +33,7 @@
 
 **2. 点右上角的「添加插件」**
 
-**3. 粘贴仓库地址 `https://github.com/ziui1008/dsh-chat-pro`（或填包名 `chat-in-dsh`），点「安装」**
+**3. 粘贴仓库地址 `https://github.com/ziui1008/dsh-chat-pro`，点「安装」**
 
 **4. 装好后点「立即启用」**
 
