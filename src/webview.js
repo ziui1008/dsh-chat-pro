@@ -108,12 +108,16 @@ async function proxyMessages(ctx, config, req, res) {
     return
   }
   const body = await readBody(req)
+  // 带附件的请求要原样带上浏览器发的 anthropic-beta（files-api-…），
+  // 少了它上游会直接 400：Missing or invalid anthropic-beta header。
+  const beta = req.headers['anthropic-beta']
   const upstream = await fetch(`${apiRoot(baseURL)}/messages`, {
     method: 'POST',
     headers: {
       'content-type': 'application/json',
       accept: 'text/event-stream',
       'anthropic-version': '2023-06-01',
+      ...(typeof beta === 'string' && beta.length > 0 ? { 'anthropic-beta': beta } : {}),
       [TOKEN_HEADER]: token,
     },
     body,
@@ -141,9 +145,11 @@ async function proxyFiles(ctx, config, req, res, pathname) {
     return
   }
   const target = `${apiRoot(baseURL)}${pathname.slice('/webchat/anthropic/v1'.length)}`
+  // 优先沿用浏览器发来的 beta 版本，没带时才用已知可用的那个。
+  const clientBeta = req.headers['anthropic-beta']
   const headers = {
     'anthropic-version': '2023-06-01',
-    'anthropic-beta': 'files-api-2025-04-14',
+    'anthropic-beta': typeof clientBeta === 'string' && clientBeta.length > 0 ? clientBeta : 'files-api-2025-04-14',
     [TOKEN_HEADER]: token,
   }
   const init = { method: req.method, headers }
