@@ -1,0 +1,151 @@
+import assert from 'node:assert/strict'
+import test from 'node:test'
+
+import { streamDshReply } from '../src/llm-bridge.js'
+
+/** Minimal ServerResponse stand-in that records the SSE events written to it. */
+function fakeResponse() {
+  const events = []
+  return {
+    events,
+    writableEnded: false,
+    headers: undefined,
+    writeHead(status, headers) {
+      this.headers = { status, headers }
+    },
+    write(chunk) {
+      for (const line of String(chunk).split('\n')) {
+        if (line.startsWith('data: ')) events.push(JSON.parse(line.slice(6)))
+      }
+      return true
+    },
+    end() {
+      this.writableEnded = true
+    },
+    on() {},
+  }
+}
+
+/** Build a fake ctx whose llm replays one scripted turn per round. */
+function fakeContext(turns) {
+  let round = 0
+  const seen = []
+  const web = {
+    searchReady: async () => true,
+    search: async () => ({ truncated: false, sources: [{ url: 'https://example.com/a', title: 'A', snippet: 'aa' }] }),
+    fetchReady: async () => true,
+    fetch: async () => ({ url: 'https://example.com/a', statusCode: 200, body: { kind: 'html', content: '<p>正文</p>' } }),
+  }
+  const llm = {
+    resolveModelInfo: async () => ({ reasoning: undefined }),
+    async *stream(options) {
+      seen.push({ round, tools: Array.isArray(options.tools) ? options.tools.length : 0 })
+      const scripted = turns[round++] ?? [{ type: 'text', text: 'end' }]
+      // 没有工具可调时，假模型只能给出正文——和真实供应商的行为一致。
+      const turn = options.tools === undefined ? [{ type: 'text', text: '结论。' }] : scripted
+      for (const [index, piece] of turn.entries()) {
+        if (piece.type === 'text') {
+          yield { type: 'block-start', index, blockType: 'text' }
+          yield { type: 'text-delta', index, text: piece.text }
+          yield { type: 'block-end', index, block: { type: 'text', text: piece.text } }
+        } else {
+          yield { type: 'block-start', index, blockType: 'tool-call' }
+          yield { type: 'block-end', index, block: { type: 'tool-call', id: piece.id, name: piece.name, arguments: JSON.stringify(piece.args) } }
+        }
+      }
+      yield { type: 'usage', usage: { inputTokens: 10, outputTokens: 5 } }
+      yield {
+        type: 'finish',
+        reason: turn.some(piece => piece.type === 'tool')
+          ? { kind: 'tool-calls' }
+          : { kind: 'stop' },
+      }
+    },
+  }
+  return {
+    seen,
+    ctx: {
+      get(name) {
+        if (name === 'llm') return llm
+        if (name === 'web') return web
+        return undefined
+      },
+    },
+  }
+}
+
+const route = { provider: 'nume', model: 'gpt-6.2-sol', effort: 'low' }
+const body = {
+  model: 'gpt-6.2-sol',
+  messages: [{ role: 'user', content: [{ type: 'text', text: '北京天气' }] }],
+  thinking: { type: 'disabled' },
+  tools: [{ name: 'deepseek_web_search' }, { name: 'deepseek_read_url' }],
+}
+
+test('工具调用后把结果回灌，最后给出正文', async () => {
+  const { ctx } = fakeContext([
+    [{ type: 'tool', id: 'call_1', name: 'web_search', args: { query: '北京天气' } }],
+    [{ type: 'text', text: '明天适合跑步。' }],
+  ])
+  const res = fakeResponse()
+  await streamDshReply(ctx, body, route, res)
+
+  const types = res.events.filter(event => event.type === 'content_block_start').map(event => event.content_block.type)
+  assert.deepEqual(types, ['server_tool_use', 'web_search_tool_result', 'text'])
+  const text = res.events.filter(event => event.type === 'content_block_delta').map(event => event.delta.text).join('')
+  assert.equal(text, '明天适合跑步。')
+  assert.equal(res.writableEnded, true)
+
+  const indices = res.events.filter(event => event.type === 'content_block_start').map(event => event.index)
+  assert.deepEqual([...indices].sort((a, b) => a - b), indices)
+  assert.equal(new Set(indices).size, indices.length)
+})
+
+test('预算用完后不再给工具，逼出最后一段回答', async () => {
+  const toolTurn = (id) => [{ type: 'tool', id, name: 'web_search', args: { query: id } }]
+  const { ctx, seen } = fakeContext([
+    toolTurn('call_a'),
+    toolTurn('call_b'),
+    toolTurn('call_c'),
+    toolTurn('call_d'),
+    toolTurn('call_e'),
+    [{ type: 'text', text: '结论。' }],
+  ])
+  const res = fakeResponse()
+  await streamDshReply(ctx, body, route, res)
+
+  assert.deepEqual(seen.map(entry => entry.tools), [2, 2, 2, 0])
+  const text = res.events.filter(event => event.type === 'content_block_delta').map(event => event.delta.text).join('')
+  assert.equal(text, '结论。')
+})
+
+test('模型直接回答时不发工具块', async () => {
+  const { ctx } = fakeContext([[{ type: 'text', text: '直接答。' }]])
+  const res = fakeResponse()
+  await streamDshReply(ctx, body, route, res)
+
+  const types = res.events.filter(event => event.type === 'content_block_start').map(event => event.content_block.type)
+  assert.deepEqual(types, ['text'])
+})
+
+test('工具失败也回灌一条 isError 结果，回答继续', async () => {
+  const { ctx } = fakeContext([
+    [{ type: 'tool', id: 'call_x', name: 'read_url', args: { url: 'file:///etc/passwd' } }],
+    [{ type: 'text', text: '换个说法。' }],
+  ])
+  const res = fakeResponse()
+  await streamDshReply(ctx, body, route, res)
+
+  const result = res.events.find(event => event.type === 'content_block_start' && event.content_block.type === 'web_fetch_tool_result')
+  assert.equal(result.content_block.content.type, 'web_fetch_tool_result_error')
+  const text = res.events.filter(event => event.type === 'content_block_delta').map(event => event.delta.text).join('')
+  assert.equal(text, '换个说法。')
+})
+
+test('只声明 read_url 时不提供检索工具', async () => {
+  const { ctx, seen } = fakeContext([[{ type: 'text', text: '好。' }]])
+  const res = fakeResponse()
+  await streamDshReply(ctx, { ...body, tools: [{ name: 'deepseek_read_url' }] }, route, res)
+
+  assert.equal(seen[0].tools, 1)
+})

@@ -24,7 +24,7 @@
 ## 命令
 
 ```bash
-node --test test/protocol.test.js test/dsh-import.test.js test/llm-bridge.test.js test/llm-fetch.test.js
+node --test test/protocol.test.js test/dsh-import.test.js test/llm-bridge.test.js test/llm-fetch.test.js test/llm-tools.test.js test/llm-loop.test.js
 pwsh scripts/build-webview.ps1     # 克隆上游、打补丁、构建、同步 webview/dist
 ```
 

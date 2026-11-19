@@ -376,6 +376,321 @@ const STOP_REASON = {
  * @param {object} body 网页版的原始请求体
  * @param {import('node:http').ServerResponse} res
  */
+/** How many model turns one reply may spend on tool calls. */
+
+
+const MAX_ROUNDS = 3
+/** Total tool calls allowed for one reply, so a hostile page cannot drive an endless crawl. */
+const MAX_TOOL_CALLS = 4
+
+const TOOL_SEARCH = {
+  name: 'web_search',
+  description: 'Search the public web for current information. Call it when the answer depends on facts you cannot verify from the conversation.',
+  parameters: {
+    type: 'object',
+    properties: {
+      query: { type: 'string', description: 'What to search for, in the user language.' },
+    },
+    required: ['query'],
+    additionalProperties: false,
+  },
+}
+
+const TOOL_READ = {
+  name: 'read_url',
+  description: 'Open one http or https page and return its readable text. Use it for a link the user pasted, or when a search result needs detail.',
+  parameters: {
+    type: 'object',
+    properties: {
+      url: { type: 'string', description: 'Absolute http or https URL.' },
+    },
+    required: ['url'],
+    additionalProperties: false,
+  },
+}
+
+/** Tool names the browser declared in its request body. */
+export function toolNamesOf(body) {
+  const list = Array.isArray(body?.tools) ? body.tools : []
+  return list
+    .map(tool => (tool !== null && typeof tool === 'object' && typeof tool.name === 'string' ? tool.name : undefined))
+    .filter(name => name !== undefined)
+}
+
+/**
+ * Which tools the host is willing to run for this request.
+ *
+ * The browser always declares `deepseek_read_url`; `deepseek_web_search` only when the search
+ * toggle is on. Passing the same set to the model keeps the UI honest: no pill, no tool.
+ */
+export function hostTools(body) {
+  const names = new Set(toolNamesOf(body))
+  return [
+    ...(names.has('deepseek_web_search') ? [TOOL_SEARCH] : []),
+    ...(names.has('deepseek_read_url') ? [TOOL_READ] : []),
+  ]
+}
+
+/** Parse the raw JSON arguments a model produced without letting a bad payload throw. */
+export function toolArguments(text) {
+  if (typeof text !== 'string' || text.trim().length === 0) return {}
+  try {
+    const parsed = JSON.parse(text)
+    return parsed !== null && typeof parsed === 'object' ? parsed : {}
+  } catch {
+    return {}
+  }
+}
+
+/** True when a URL is something the host is willing to fetch. */
+export function isFetchableUrl(value) {
+  if (typeof value !== 'string') return false
+  let url
+  try {
+    url = new URL(value)
+  } catch {
+    return false
+  }
+  if (url.protocol !== 'http:' && url.protocol !== 'https:') return false
+  if (url.username.length > 0 || url.password.length > 0) return false
+  if (url.hostname.length === 0) return false
+  if (value.length > 2048) return false
+  return !isPrivateHost(url.hostname)
+}
+
+/** Loopback and link-local names the provider would refuse anyway; refuse them with a clear reason. */
+function isPrivateHost(hostname) {
+  const host = hostname.toLowerCase()
+  if (host === 'localhost' || host.endsWith('.localhost') || host.endsWith('.local')) return true
+  if (host === '[::1]' || host === '::1') return true
+  if (host === '0.0.0.0') return true
+  const ipv4 = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(host)
+  if (ipv4 === null) return false
+  const [a, b] = [Number(ipv4[1]), Number(ipv4[2])]
+  if (a === 10 || a === 127) return true
+  if (a === 169 && b === 254) return true
+  if (a === 172 && b >= 16 && b <= 31) return true
+  if (a === 192 && b === 168) return true
+  return false
+}
+
+/**
+ * Run one model-requested tool call.
+ *
+ * The model writes the argument; this function only decides whether the host can honour it and
+ * what text goes back. Never throws: a failure becomes an `isError` result the model can read.
+ */
+export async function executeTool(ctx, route, call, signal) {
+  const args = toolArguments(call.arguments)
+  if (call.name === TOOL_SEARCH.name) {
+    const query = typeof args.query === 'string' ? args.query.trim().slice(0, 200) : ''
+    if (query.length === 0) {
+      return { kind: 'search', ok: false, text: '检索失败：query 为空。', payload: undefined, query }
+    }
+    const found = await runSearch(ctx, route, query, signal)
+    if (found === undefined) {
+      return { kind: 'search', ok: false, text: '检索失败：这台机器上的检索服务不可用。', payload: undefined, query }
+    }
+    return { kind: 'search', ok: true, text: renderSearchContext(query, found), payload: found, query }
+  }
+  if (call.name === TOOL_READ.name) {
+    const url = typeof args.url === 'string' ? args.url.trim() : ''
+    if (!isFetchableUrl(url)) {
+      return { kind: 'read', ok: false, text: `打不开 ${url || '(空链接)'}：只支持 http 或 https 的公开页面。`, payload: undefined, url }
+    }
+    const [page] = await runFetch(ctx, route, [url], signal)
+    if (page === undefined) {
+      return { kind: 'read', ok: false, text: `打不开 ${url}：页面取不到正文，可能超时、被拒绝或不是文本页面。`, payload: undefined, url }
+    }
+    return { kind: 'read', ok: true, text: renderFetchContext([page]), payload: page, url }
+  }
+  return { kind: 'other', ok: false, text: `这台机器上没有名为 ${call.name} 的工具。`, payload: undefined }
+}
+
+/** Anthropic block for one finished tool call, so the panel can draw its step. */
+function toolCallBlockSSE(call, result) {
+  if (result.kind === 'search') {
+    return {
+      type: 'server_tool_use',
+      id: call.id,
+      name: 'deepseek_web_search',
+      input: { action: 'search', queries: [result.query] },
+      caller: { type: 'direct' },
+      kind: 'search',
+    }
+  }
+  return {
+    type: 'server_tool_use',
+    id: call.id,
+    name: 'deepseek_read_url',
+    input: { action: 'read_link', url: result.url },
+    caller: { type: 'direct' },
+    kind: 'read_link',
+  }
+}
+
+/** Anthropic result block for one finished tool call. */
+function toolResultBlockSSE(call, result) {
+  if (result.kind === 'search') {
+    const found = result.payload
+    return {
+      type: 'web_search_tool_result',
+      tool_use_id: call.id,
+      kind: 'search',
+      content: found === undefined
+        ? [{ type: 'web_search_tool_result_error', error_code: 'unavailable' }]
+        : found.sources.map(source => ({
+          type: 'web_search_result',
+          title: typeof source.title === 'string' && source.title.length > 0 ? source.title : source.url,
+          url: source.url,
+          snippet: typeof source.snippet === 'string' ? source.snippet : source.summary ?? '',
+          site_icon: null,
+          site_name: null,
+          page_age: null,
+          encrypted_content: '',
+        })),
+    }
+  }
+  const page = result.payload
+  return {
+    type: 'web_fetch_tool_result',
+    tool_use_id: call.id,
+    kind: 'read_link',
+    content: page === undefined
+      ? { type: 'web_fetch_tool_result_error', error_code: 'url_not_accessible' }
+      : {
+        type: 'web_fetch_result',
+        url: page.url,
+        content: {
+          type: 'document',
+          source: { type: 'text', media_type: 'text/plain', data: page.text.slice(0, 2000) },
+          title: null,
+        },
+        published_at: null,
+      },
+  }
+}
+
+/**
+ * Stream one assistant turn to the browser and collect what the model produced.
+ *
+ * Block indices are rebased onto `cursor` so several rounds share one Anthropic message.
+ */
+async function streamRound(llm, options, res, cursor) {
+  const text = new Map()
+  const blocks = []
+  let maxIndex = -1
+  let finishReason
+  let replayState
+  let usage
+  const open = new Set()
+
+  const startBlock = (index, blockType) => {
+    if (blockType === 'text') {
+      writeEvent(res, 'content_block_start', {
+        type: 'content_block_start',
+        index,
+        content_block: { type: 'text', text: '' },
+      })
+      open.add(index)
+    } else if (blockType === 'reasoning') {
+      writeEvent(res, 'content_block_start', {
+        type: 'content_block_start',
+        index,
+        content_block: { type: 'thinking', thinking: '', signature: '' },
+      })
+      open.add(index)
+    }
+  }
+
+  for await (const chunk of llm.stream(options)) {
+    switch (chunk.type) {
+      case 'block-start': {
+        maxIndex = Math.max(maxIndex, chunk.index)
+        startBlock(cursor + chunk.index, chunk.blockType)
+        break
+      }
+      case 'text-delta': {
+        maxIndex = Math.max(maxIndex, chunk.index)
+        const index = cursor + chunk.index
+        if (!open.has(index)) startBlock(index, 'text')
+        const entry = text.get(chunk.index) ?? { type: 'text', text: '' }
+        entry.text += chunk.text
+        text.set(chunk.index, entry)
+        writeEvent(res, 'content_block_delta', {
+          type: 'content_block_delta',
+          index,
+          delta: { type: 'text_delta', text: chunk.text },
+        })
+        break
+      }
+      case 'reasoning-delta': {
+        maxIndex = Math.max(maxIndex, chunk.index)
+        const index = cursor + chunk.index
+        if (!open.has(index)) startBlock(index, 'reasoning')
+        const entry = text.get(chunk.index) ?? { type: 'reasoning', text: '' }
+        entry.text += chunk.text
+        text.set(chunk.index, entry)
+        writeEvent(res, 'content_block_delta', {
+          type: 'content_block_delta',
+          index,
+          delta: { type: 'thinking_delta', thinking: chunk.text },
+        })
+        break
+      }
+      case 'block-end': {
+        maxIndex = Math.max(maxIndex, chunk.index)
+        const index = cursor + chunk.index
+        if (open.delete(index)) {
+          writeEvent(res, 'content_block_stop', { type: 'content_block_stop', index })
+        }
+        if (chunk.block?.type === 'tool-call') {
+          blocks.push({ index: chunk.index, block: chunk.block })
+        }
+        break
+      }
+      case 'usage':
+        usage = chunk.usage
+        break
+      case 'finish': {
+        replayState = chunk.replayState
+        finishReason = chunk.reason
+        break
+      }
+      default:
+        break
+    }
+  }
+
+  for (const index of open) {
+    writeEvent(res, 'content_block_stop', { type: 'content_block_stop', index })
+  }
+
+  const ordered = [...text.entries()]
+    .sort((a, b) => a[0] - b[0])
+    .map(([, value]) => value)
+    .concat(blocks.sort((a, b) => a.index - b.index).map(entry => entry.block))
+
+  return {
+    content: ordered,
+    toolCalls: blocks.sort((a, b) => a.index - b.index).map(entry => entry.block),
+    nextCursor: cursor + Math.max(maxIndex + 1, 0),
+    finishReason,
+    replayState,
+    usage,
+  }
+}
+
+/** Sum token counts across rounds for the final `message_delta`. */
+function mergeUsage(total, usage) {
+  if (usage === undefined) return total
+  const next = { ...(total ?? {}) }
+  for (const key of ['inputTokens', 'outputTokens', 'totalTokens', 'cacheReadTokens', 'cacheWriteTokens', 'reasoningTokens']) {
+    if (typeof usage[key] === 'number') next[key] = (next[key] ?? 0) + usage[key]
+  }
+  return next
+}
+
 export async function streamDshReply(ctx, body, route, res) {
   const llm = llmOf(ctx)
   if (llm === undefined) {
@@ -392,24 +707,16 @@ export async function streamDshReply(ctx, body, route, res) {
       return []
     }
   })()
-  const { messages, system: browserSystem } = toGenerateMessages(body, route)
+  const { messages, system } = toGenerateMessages(body, route)
   if (messages.length === 0) {
     const error = new Error('没有可发送的消息')
     error.status = 400
     throw error
   }
   const effort = effortFor(route, thinking, efforts)
+  const tools = hostTools(body)
   const controller = new AbortController()
   res.on('close', () => controller.abort())
-
-  const options = {
-    provider: route.provider,
-    model: route.model,
-    messages,
-    signal: controller.signal,
-    ...(effort === undefined ? {} : { reasoningEffort: effort }),
-    ...(typeof body.max_tokens === 'number' ? { maxTokens: body.max_tokens } : {}),
-  }
 
   res.writeHead(200, {
     'content-type': 'text/event-stream; charset=utf-8',
@@ -425,209 +732,97 @@ export async function streamDshReply(ctx, body, route, res) {
     },
   })
 
-  // 检索与抓取按网页版的服务端工具协议边做边发：前端先看到「正在搜索 / 打开网页」，
-  // 结果块落下来才收尾，和官方那条链路的观感一致。
-  let base = 0
-  const context = []
-  const query = searchRequested(body) ? searchQueryOf(body) : undefined
-  let found
-  if (query !== undefined) {
-    const id = toolUseId()
-    writeEvent(res, 'content_block_start', {
-      type: 'content_block_start',
-      index: 0,
-      content_block: {
-        type: 'server_tool_use',
-        id,
-        name: 'deepseek_web_search',
-        input: { action: 'search', queries: [query] },
-        caller: { type: 'direct' },
-        kind: 'search',
-      },
-    })
-    found = await runSearch(ctx, route, query, controller.signal)
-    writeEvent(res, 'content_block_start', {
-      type: 'content_block_start',
-      index: 1,
-      content_block: {
-        type: 'web_search_tool_result',
-        tool_use_id: id,
-        kind: 'search',
-        content: found === undefined
-          ? [{ type: 'web_search_tool_result_error', error_code: 'unavailable' }]
-          : found.sources.map(source => ({
-            type: 'web_search_result',
-            title: typeof source.title === 'string' && source.title.length > 0 ? source.title : source.url,
-            url: source.url,
-            snippet: typeof source.snippet === 'string' ? source.snippet : source.summary ?? '',
-            site_icon: null,
-            site_name: null,
-            page_age: null,
-            encrypted_content: '',
-          })),
-      },
-    })
-    writeEvent(res, 'content_block_stop', { type: 'content_block_stop', index: 1 })
-    base = 2
-    if (found !== undefined) context.push(renderSearchContext(query, found))
-  }
-
-  // 网页版的「读链接」也没人执行了，改由宿主抓前几个页面，只把正文摘录交给模型。
-  const targets = readRequested(body) ? readTargets(body, found) : []
-  if (targets.length > 0) {
-    const ids = targets.map(() => toolUseId())
-    targets.forEach((url, offset) => {
-      writeEvent(res, 'content_block_start', {
-        type: 'content_block_start',
-        index: base + offset * 2,
-        content_block: {
-          type: 'server_tool_use',
-          id: ids[offset],
-          name: 'deepseek_read_url',
-          input: { action: 'read_link', url },
-          caller: { type: 'direct' },
-          kind: 'read_link',
-        },
-      })
-    })
-    const fetched = await runFetch(ctx, route, targets, controller.signal)
-    const pages = []
-    targets.forEach((url, offset) => {
-      const page = fetched[offset]
-      if (page !== undefined) pages.push(page)
-      const index = base + offset * 2
-      writeEvent(res, 'content_block_stop', { type: 'content_block_stop', index })
-      writeEvent(res, 'content_block_start', {
-        type: 'content_block_start',
-        index: index + 1,
-        content_block: page === undefined
-          ? {
-            type: 'web_fetch_tool_result',
-            tool_use_id: ids[offset],
-            kind: 'read_link',
-            content: { type: 'web_fetch_tool_result_error', error_code: 'url_not_accessible' },
-          }
-          : {
-            type: 'web_fetch_tool_result',
-            tool_use_id: ids[offset],
-            kind: 'read_link',
-            content: {
-              type: 'web_fetch_result',
-              url: page.url,
-              content: {
-                type: 'document',
-                source: { type: 'text', media_type: 'text/plain', data: page.text.slice(0, 2000) },
-                title: null,
-              },
-              published_at: null,
-            },
-          },
-      })
-      writeEvent(res, 'content_block_stop', { type: 'content_block_stop', index: index + 1 })
-    })
-    base += targets.length * 2
-    if (pages.length > 0) context.push(renderFetchContext(pages))
-  }
-
-  if (context.length > 0) {
-    const system = [browserSystem, ...context].filter(part => typeof part === 'string' && part.length > 0).join('\n\n')
-    options.system = system
-  }
-
+  const convo = [...messages]
+  let cursor = 0
+  let calls = 0
   let usage
   let stopReason = 'end_turn'
-  const open = new Set()
+  let failure
+
   try {
-    for await (const chunk of llm.stream(options)) {
-      switch (chunk.type) {
-        case 'block-start': {
-          const index = chunk.index + base
-          if (chunk.blockType === 'text') {
-            open.add(index)
-            writeEvent(res, 'content_block_start', {
-              type: 'content_block_start',
-              index,
-              content_block: { type: 'text', text: '' },
-            })
-          } else if (chunk.blockType === 'reasoning') {
-            open.add(index)
-            writeEvent(res, 'content_block_start', {
-              type: 'content_block_start',
-              index,
-              content_block: { type: 'thinking', thinking: '', signature: '' },
-            })
-          }
-          break
-        }
-        case 'text-delta': {
-          const index = chunk.index + base
-          if (!open.has(index)) {
-            open.add(index)
-            writeEvent(res, 'content_block_start', {
-              type: 'content_block_start',
-              index,
-              content_block: { type: 'text', text: '' },
-            })
-          }
-          writeEvent(res, 'content_block_delta', {
-            type: 'content_block_delta',
-            index,
-            delta: { type: 'text_delta', text: chunk.text },
-          })
-          break
-        }
-        case 'reasoning-delta': {
-          const index = chunk.index + base
-          if (!open.has(index)) {
-            open.add(index)
-            writeEvent(res, 'content_block_start', {
-              type: 'content_block_start',
-              index,
-              content_block: { type: 'thinking', thinking: '', signature: '' },
-            })
-          }
-          writeEvent(res, 'content_block_delta', {
-            type: 'content_block_delta',
-            index,
-            delta: { type: 'thinking_delta', thinking: chunk.text },
-          })
-          break
-        }
-        case 'block-end': {
-          const index = chunk.index + base
-          if (open.delete(index)) {
-            writeEvent(res, 'content_block_stop', { type: 'content_block_stop', index })
-          }
-          break
-        }
-        case 'usage':
-          usage = chunk.usage
-          break
-        case 'finish': {
-          if (chunk.reason?.kind === 'error') {
-            stopReason = 'end_turn'
-            const message = chunk.reason.failure?.message ?? '模型调用失败'
-            writeEvent(res, 'error', { type: 'error', error: { type: 'api_error', message } })
-          } else {
-            stopReason = STOP_REASON[chunk.reason?.kind] ?? 'end_turn'
-          }
-          break
-        }
-        default:
-          break
+    // 最后一轮不给工具：预算用完时必须让模型把答案写出来，而不是再调一次工具就收尾。
+    for (let round = 0; round <= MAX_ROUNDS; round++) {
+      if (controller.signal.aborted) break
+      const offerTools = round < MAX_ROUNDS && calls < MAX_TOOL_CALLS && tools.length > 0
+      const options = {
+        provider: route.provider,
+        model: route.model,
+        messages: convo,
+        signal: controller.signal,
+        ...(offerTools ? { tools } : {}),
+        ...(typeof system === 'string' && system.length > 0 ? { system } : {}),
+        ...(effort === undefined ? {} : { reasoningEffort: effort }),
+        ...(typeof body.max_tokens === 'number' ? { maxTokens: body.max_tokens } : {}),
       }
+      const turn = await streamRound(llm, options, res, cursor)
+      cursor = turn.nextCursor
+      usage = mergeUsage(usage, turn.usage)
+      if (turn.finishReason?.kind === 'error') {
+        failure = turn.finishReason.failure?.message ?? '模型调用失败'
+        break
+      }
+      if (turn.toolCalls.length === 0) {
+        stopReason = STOP_REASON[turn.finishReason?.kind] ?? 'end_turn'
+        break
+      }
+      if (!offerTools) break
+
+      convo.push({
+        id: randomUUID(),
+        role: 'assistant',
+        content: turn.content,
+        source: { kind: 'model', provider: route.provider, model: route.model, ...(turn.replayState === undefined ? {} : { replayState: turn.replayState }) },
+      })
+
+      for (const call of turn.toolCalls) {
+        if (calls >= MAX_TOOL_CALLS) {
+          convo.push({
+            id: randomUUID(),
+            role: 'tool',
+            toolCallId: call.id,
+            isError: true,
+            content: [{ type: 'text', text: '这次回答的工具调用次数已用完，请直接基于已有信息作答，不要再调用工具。' }],
+            source: { kind: 'tool', callId: call.id },
+          })
+          continue
+        }
+        calls++
+        const opSignal = AbortSignal.any([controller.signal, AbortSignal.timeout(20_000)])
+        const result = await executeTool(ctx, route, call, opSignal)
+        writeEvent(res, 'content_block_start', {
+          type: 'content_block_start',
+          index: cursor,
+          content_block: toolCallBlockSSE(call, result),
+        })
+        writeEvent(res, 'content_block_stop', { type: 'content_block_stop', index: cursor })
+        writeEvent(res, 'content_block_start', {
+          type: 'content_block_start',
+          index: cursor + 1,
+          content_block: toolResultBlockSSE(call, result),
+        })
+        writeEvent(res, 'content_block_stop', { type: 'content_block_stop', index: cursor + 1 })
+        cursor += 2
+        convo.push({
+          id: randomUUID(),
+          role: 'tool',
+          toolCallId: call.id,
+          isError: !result.ok,
+          content: [{ type: 'text', text: result.text }],
+          source: { kind: 'tool', callId: call.id },
+        })
+      }
+      stopReason = 'end_turn'
     }
   } catch (error) {
-    const message = String(error?.message ?? error)
-    if (!res.writableEnded) {
-      writeEvent(res, 'error', { type: 'error', error: { type: 'api_error', message } })
-      res.end()
-    }
+    failure = String(error?.message ?? error)
+  }
+
+  if (failure !== undefined && !res.writableEnded) {
+    writeEvent(res, 'error', { type: 'error', error: { type: 'api_error', message: failure } })
+    res.end()
     return
   }
-  for (const index of open) {
-    writeEvent(res, 'content_block_stop', { type: 'content_block_stop', index })
-  }
+  if (res.writableEnded) return
   writeEvent(res, 'message_delta', {
     type: 'message_delta',
     delta: { stop_reason: stopReason, stop_sequence: null },
