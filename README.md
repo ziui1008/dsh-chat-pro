@@ -3,7 +3,7 @@
 把 DeepSeek 官网那套对话界面搬进 DeepSeek Harness 的左侧面板，并且让它能用上 DSH 里已经配好的模型。
 
 <p>
-  <img alt="version" src="https://img.shields.io/badge/version-0.6.1-2F6FEB?style=flat-square" />
+  <img alt="version" src="https://img.shields.io/badge/version-0.7.0-2F6FEB?style=flat-square" />
   <a href="https://github.com/ziui1008/dsh-chat-pro/actions/workflows/test.yml"><img alt="test" src="https://github.com/ziui1008/dsh-chat-pro/actions/workflows/test.yml/badge.svg" /></a>
   <a href="LICENSE"><img alt="license" src="https://img.shields.io/badge/license-MIT-2EA043?style=flat-square" /></a>
   <a href="https://github.com/deepseek-ai/chat-demo"><img alt="upstream" src="https://img.shields.io/badge/upstream-chat--demo-555?style=flat-square" /></a>
