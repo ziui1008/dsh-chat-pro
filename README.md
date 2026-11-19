@@ -1,9 +1,9 @@
-# chat-in-dsh
+# dsh-chat-pro
 
 把 DeepSeek 官网那套对话界面搬进 DeepSeek Harness 的左侧面板，并且让它能用上 DSH 里已经配好的模型。
 
 <p>
-  <img alt="version" src="https://img.shields.io/badge/version-1.0.0-2F6FEB?style=flat-square" />
+  <img alt="version" src="https://img.shields.io/badge/version-1.0.1-2F6FEB?style=flat-square" />
   <a href="https://github.com/ziui1008/dsh-chat-pro/actions/workflows/test.yml"><img alt="test" src="https://github.com/ziui1008/dsh-chat-pro/actions/workflows/test.yml/badge.svg" /></a>
   <a href="LICENSE"><img alt="license" src="https://img.shields.io/badge/license-MIT-2EA043?style=flat-square" /></a>
   <a href="https://github.com/deepseek-ai/chat-demo"><img alt="upstream" src="https://img.shields.io/badge/upstream-chat--demo-555?style=flat-square" /></a>
@@ -27,7 +27,7 @@
 - **不用 API Key**：请求由宿主用 DSH 当前登录的 DeepSeek 账户换 token 代发。
 - **存储独立**：面板的会话存在浏览器 IndexedDB 里，与 DSH 的会话日志互不影响，删一边不牵连另一边。
 - **从 DSH 搬对话**：任意会话右键 →「导入到网页版」，复制一份过来接着聊（一次性复制）。
-- **借用其它模型**：右下角胶囊按供应商列出 DSH 里的模型，同一张浮层里切思考档位。
+- **借用其它模型**：右下角胶囊按供应商列出 DSH 里的模型，同一张浮层里切思考档位；首条消息的标题也由当前模型来起。
 - **官方能力都在**：深度思考、联网搜索、引用角标、公式、图表、深色模式。
 
 ## 安装
@@ -35,6 +35,8 @@
 1. 打开 DSH 左侧的「插件」页，点右上角「添加插件」。
 2. 填仓库地址 `https://github.com/ziui1008/dsh-chat-pro`，点「安装」。
 3. 装好后点「立即启用」，左侧面板列表里会多出「网页版」。
+
+> 仓库叫 `dsh-chat-pro`，包名与插件 id 仍是 `chat-in-dsh`（沿用最早的命名，换了会影响已装的用户）。
 
 ## 使用
 
@@ -94,8 +96,8 @@
 ## 开发
 
 ```bash
-git clone https://github.com/ziui1008/dsh-chat-pro.git chat-in-dsh
-cd chat-in-dsh
+git clone https://github.com/ziui1008/dsh-chat-pro.git
+cd dsh-chat-pro
 node --test test/protocol.test.js test/dsh-import.test.js test/llm-bridge.test.js
 ```
 

@@ -840,6 +840,54 @@ async function streamRound(llm, options, res, cursor) {
   }
 }
 
+/** 网页版在首条消息时请求服务端拟标题；换成 DSH 的模型后要自己补这一步。 */
+export function wantsTitle(body) {
+  return body?.title?.enabled === true
+}
+
+const TITLE_PROMPT = [
+  '请为下面这段对话起一个简短标题：不超过 14 个字，中文，',
+  '不要引号、书名号、句号，也不要任何解释，只输出标题本身。',
+  '',
+  '',
+].join('')
+
+/**
+ * 用当前模型起标题：一次不带工具的小请求，失败就当没有标题。
+ * @returns {Promise<string | undefined>}
+ */
+export async function generateTitle(llm, route, messages, signal) {
+  const lastUser = [...messages].reverse().find((message) => message.role === 'user')
+  const text = (lastUser?.content ?? [])
+    .filter((block) => block.type === 'text')
+    .map((block) => block.text)
+    .join(' ')
+    .trim()
+  if (text.length === 0) return undefined
+  let out = ''
+  try {
+    const stream = llm.stream({
+      provider: route.provider,
+      model: route.model,
+      messages: [{ role: 'user', content: [{ type: 'text', text: TITLE_PROMPT + text.slice(0, 2000) }] }],
+      maxTokens: 32,
+      signal,
+    })
+    for await (const chunk of stream) {
+      if (chunk.type === 'text-delta') out += chunk.text
+      if (chunk.type === 'finish') break
+    }
+  } catch {
+    return undefined
+  }
+  const title = out
+    .replace(/["'“”‘’「」『』]/g, '')
+    .replace(/\s+/g, ' ')
+    .replace(/[。.！!？?]+$/, '')
+    .trim()
+  return title.length === 0 ? undefined : title.slice(0, 40)
+}
+
 /** Sum token counts across rounds for the final `message_delta`. */
 function mergeUsage(total, usage) {
   if (usage === undefined) return total
@@ -901,6 +949,11 @@ export async function streamDshReply(ctx, body, route, res) {
       usage: { input_tokens: 0, cache_creation_input_tokens: 0, cache_read_input_tokens: 0, output_tokens: 0 },
     },
   })
+
+  // 标题请求和正文并行跑：网页版靠服务端返回，DSH 路由只能自己再问一次模型。
+  const titleTask = wantsTitle(body)
+    ? generateTitle(llm, route, messages, AbortSignal.any([signal, AbortSignal.timeout(20_000)]))
+    : undefined
 
   const convo = [...messages]
   let cursor = 0
@@ -1011,9 +1064,10 @@ export async function streamDshReply(ctx, body, route, res) {
     return
   }
   if (res.writableEnded) return
+  const title = titleTask === undefined ? undefined : await titleTask.catch(() => undefined)
   writeEvent(res, 'message_delta', {
     type: 'message_delta',
-    delta: { stop_reason: stopReason, stop_sequence: null },
+    delta: { stop_reason: stopReason, stop_sequence: null, ...(title === undefined ? {} : { title }) },
     ...(usage === undefined ? {} : { usage: usageOf(usage) }),
   })
   writeEvent(res, 'message_stop', { type: 'message_stop' })

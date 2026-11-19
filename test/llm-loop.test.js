@@ -259,3 +259,60 @@ test('同一轮里重复的同参调用只执行一次，id 仍然唯一', async
   assert.equal(ids.length, 2)
   assert.equal(new Set(ids).size, 2)
 })
+
+test('首条消息请求标题时，把模型起的标题放进 message_delta', async () => {
+  const res = fakeResponse()
+  const ctx = {
+    get(name) {
+      if (name !== 'llm') return undefined
+      return {
+        resolveModelInfo: async () => ({ reasoning: undefined }),
+        async *stream(options) {
+          const isTitle = options.maxTokens === 32
+          for (const [index, text] of (isTitle ? ['“深圳天气”'] : ['今天有雨。']).entries()) {
+            yield { type: 'block-start', index, blockType: 'text' }
+            yield { type: 'text-delta', index, text }
+            yield { type: 'block-end', index, block: { type: 'text', text } }
+          }
+          yield { type: 'finish', reason: { kind: 'stop' } }
+        },
+      }
+    },
+  }
+  await streamDshReply(ctx, {
+    model: 'm',
+    messages: [{ role: 'user', content: [{ type: 'text', text: '今天深圳天气怎么样' }] }],
+    title: { enabled: true },
+  }, { provider: 'nume', model: 'm' }, res)
+
+  const delta = res.events.find((event) => event.type === 'message_delta')
+  assert.equal(delta.delta.title, '深圳天气')
+})
+
+test('起标题失败不影响正文', async () => {
+  const res = fakeResponse()
+  const ctx = {
+    get(name) {
+      if (name !== 'llm') return undefined
+      return {
+        resolveModelInfo: async () => ({ reasoning: undefined }),
+        async *stream(options) {
+          if (options.maxTokens === 32) throw new Error('title boom')
+          yield { type: 'block-start', index: 0, blockType: 'text' }
+          yield { type: 'text-delta', index: 0, text: '正文照常。' }
+          yield { type: 'block-end', index: 0, block: { type: 'text', text: '正文照常。' } }
+          yield { type: 'finish', reason: { kind: 'stop' } }
+        },
+      }
+    },
+  }
+  await streamDshReply(ctx, {
+    model: 'm',
+    messages: [{ role: 'user', content: [{ type: 'text', text: '你好' }] }],
+    title: { enabled: true },
+  }, { provider: 'nume', model: 'm' }, res)
+
+  const delta = res.events.find((event) => event.type === 'message_delta')
+  assert.equal(delta.delta.title, undefined)
+  assert.ok(res.events.some((event) => event.type === 'content_block_delta' && event.delta.text === '正文照常。'))
+})

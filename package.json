@@ -1,6 +1,6 @@
 {
   "name": "chat-in-dsh",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "type": "module",
   "description": "在 DeepSeek Harness 里加一个和网页版一模一样的对话面板：官方 chat-demo 界面，用 DSH 的账户凭据，不需要填 API Key。",
   "license": "MIT",
