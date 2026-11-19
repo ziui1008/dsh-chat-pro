@@ -169,3 +169,20 @@ test('检索成功时返回来源列表', async () => {
   assert.equal(result.sources.length, 1)
   assert.equal(result.sources[0].url, 'https://example.com/a')
 })
+
+test('历史里换过模型的回答按自己的来源标注', () => {
+  const { messages } = toGenerateMessages({
+    messages: [
+      { role: 'user', content: [{ type: 'text', text: '第一问' }] },
+      {
+        role: 'assistant',
+        dsh: { provider: 'nume', model: 'gpt-6.2-sol' },
+        content: [{ type: 'text', text: '第一答' }],
+      },
+      { role: 'user', content: [{ type: 'text', text: '第二问' }] },
+    ],
+  }, { provider: 'deepseek-account', model: 'deepseek-flash' })
+
+  assert.equal(messages[1].source.provider, 'nume')
+  assert.equal(messages[1].source.model, 'gpt-6.2-sol')
+})

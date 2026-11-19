@@ -90,11 +90,15 @@ export function toGenerateMessages(body, route) {
     if (message.role === 'assistant') {
       const content = assistantBlocks(message.content)
       if (content.length === 0) continue
+      // 历史里可能有换模型之前生成的回答，按它自己的来源标注，别一律记在当前供应商名下。
+      const origin = message.dsh ?? message.source
+      const provider = typeof origin?.provider === 'string' && origin.provider.length > 0 ? origin.provider : route.provider
+      const model = typeof origin?.model === 'string' && origin.model.length > 0 ? origin.model : route.model
       messages.push({
         role: 'assistant',
         id: randomUUID(),
         content,
-        source: { kind: 'model', provider: route.provider, model: route.model },
+        source: { kind: 'model', provider, model },
       })
     }
   }
@@ -248,13 +252,28 @@ export async function runFetch(ctx, route, urls, signal) {
       if (typeof result.statusCode === 'number' && result.statusCode >= 400) return undefined
       const raw = typeof result.body?.content === 'string' ? result.body.content : ''
       const text = result.body?.kind === 'html' ? htmlToText(raw) : raw.replace(/\s+/g, ' ').trim()
-      if (text.length === 0) return undefined
+      if (text.length === 0 || looksBinary(result.body?.content ?? raw)) return undefined
       return { url: typeof result.url === 'string' ? result.url : url, text: text.slice(0, 6000) }
     } catch {
       // 单独一页抓不到就算了
       return undefined
     }
   }))
+}
+
+/**
+ * 有些链接是 PDF / 图片，抓回来是一堆二进制。塞进上下文只会污染模型，直接当抓不到。
+ */
+export function looksBinary(text) {
+  if (typeof text !== 'string') return false
+  const head = text.slice(0, 400)
+  if (/^%PDF-|^ |^PNG|^GIF8/.test(head)) return true
+  let weird = 0
+  for (const char of text.slice(0, 2000)) {
+    const code = char.codePointAt(0)
+    if (char === '�' || (code < 32 && code !== 9 && code !== 10 && code !== 13)) weird += 1
+  }
+  return weird > text.slice(0, 2000).length * 0.05
 }
 
 /** HTML 去标签取正文：去掉脚本、样式、注释，压掉多余空白。 */

@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 
 import {
   htmlToText,
+  looksBinary,
   readRequested,
   readTargets,
   renderFetchContext,
@@ -89,4 +90,20 @@ test('正文上下文写清来源，空列表返回空串', () => {
   assert.match(text, /网页正文摘录/)
   assert.match(text, /1\. https:\/\/a\.com/)
   assert.match(text, /页面正文/)
+})
+
+test('PDF 这类二进制不当正文', async () => {
+  assert.equal(looksBinary('%PDF-1.7\n1 0 obj'), true)
+  assert.equal(looksBinary('\u0000\u0001binary'), true)
+  assert.equal(looksBinary('正常的中文网页正文，带标点。'), false)
+})
+
+test('抓回二进制时按抓不到处理', async () => {
+  const pages = await runFetch(
+    { get: () => ({ fetchReady: async () => true, fetch: async () => ({ url: 'https://e.com/a.pdf', statusCode: 200, body: { kind: 'text', content: '%PDF-1.7 ...' } }) }) },
+    { provider: 'nume', model: 'm' },
+    ['https://e.com/a.pdf'],
+    undefined,
+  )
+  assert.equal(pages[0], undefined)
 })
