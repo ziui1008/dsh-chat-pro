@@ -1,10 +1,10 @@
-# chat-in-dsh
+# dsh-chat-pro
 #
 # 一个入口：左侧面板列表里的「网页版」（main + sidebar.panellist 用同一个 key 拼成）。
-# 网页版与 DSH 会话互不干涉，因此这里没有预设、没有模型路由、也没有会话桥。
+# 网页版与 DSH 会话互不干涉：面板只有一个入口，模型切换走请求体里的 dsh 字段，不额外开入口。
 - insert:
-    - id: chat-in-dsh
-      name: chat-in-dsh
+    - id: dsh-chat-pro
+      name: dsh-chat-pro
       config:
         baseURL: ''
 

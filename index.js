@@ -1,5 +1,5 @@
 /**
- * chat-in-dsh 宿主半边。
+ * dsh-chat-pro 宿主半边。
  *
  * 只做一件事：在 `/webchat` 下托管官方 chat-demo，并替浏览器把请求转发给 DeepSeek
  * （浏览器不持有 API Key，用户也不需要登录）。
@@ -11,7 +11,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { createWebview } from './src/webview.js'
 
-export const name = 'chat-in-dsh'
+export const name = 'dsh-chat-pro'
 export const inject = ['webServer']
 
 /**
