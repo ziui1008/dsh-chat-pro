@@ -94,11 +94,7 @@
 
 没有二次包装，也没有替你「优化」提示词——模型拿到的就是网页上那一份。
 
+## 致谢
 
-
-
-
-
-
-
+界面、交互和请求逻辑来自 DeepSeek 官方开源的 [chat-demo](https://github.com/deepseek-ai/chat-demo)（MIT），插件宿主依赖 [DeepSeek Harness](https://github.com/deepseek-ai) 的 web server、槽位与模型服务。这两部分版权归 DeepSeek 所有，对应许可证见 `webview/dist/LICENSE` 与 [NOTICE](NOTICE)。
 

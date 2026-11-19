@@ -1,0 +1,14 @@
+本仓库包含第三方组件，各自版权与许可如下。
+
+1. chat-demo（https://github.com/deepseek-ai/chat-demo）
+   Copyright (c) 2026 DeepSeek
+   MIT License，全文见 webview/dist/LICENSE。
+   本仓库的 webview/dist 是该项目的构建产物，仅修改请求落点、品牌字标、
+   设置面板中与 API Key 相关的入口，以及新增的模型切换胶囊。
+
+2. DeepSeek Harness（DSH）宿主接口（web server、槽位、contextMenus、ctx.llm）
+   版权归 DeepSeek 所有，本仓库仅按其公开插件接口调用，不包含其源码。
+
+3. 本仓库自身的代码（index.js、client.js、src/、test/、scripts/ 等）
+   Copyright (c) 2026 ziui1008
+   MIT License，全文见 LICENSE。
