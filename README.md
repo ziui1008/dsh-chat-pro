@@ -3,7 +3,7 @@
 把 DeepSeek 官网那套对话界面搬进 DeepSeek Harness 的左侧面板，并且让它能用上 DSH 里已经配好的模型。
 
 <p>
-  <img alt="version" src="https://img.shields.io/badge/version-1.1.1-2F6FEB?style=flat-square" />
+  <img alt="version" src="https://img.shields.io/badge/version-1.1.2-2F6FEB?style=flat-square" />
   <a href="https://github.com/ziui1008/dsh-chat-pro/actions/workflows/test.yml"><img alt="test" src="https://github.com/ziui1008/dsh-chat-pro/actions/workflows/test.yml/badge.svg" /></a>
   <a href="LICENSE"><img alt="license" src="https://img.shields.io/badge/license-MIT-2EA043?style=flat-square" /></a>
   <a href="https://github.com/deepseek-ai/chat-demo"><img alt="upstream" src="https://img.shields.io/badge/upstream-chat--demo-555?style=flat-square" /></a>
@@ -42,7 +42,7 @@
 ## 使用
 
 - 点左侧「网页版」打开面板；想让聊天区更宽，点左上角按钮收起 DSH 的会话栏。
-- 传文件、语音、导出历史等功能都是官方前端自带的，位置没变。
+- 传文件、导出历史等功能都是官方前端自带的，位置没变；语音输入按钮被摘掉了——面板跑在 `http://127.0.0.1` 这类非 HTTPS 环境里拿不到麦克风权限，留着只会报错。
 - 想把 DSH 里的某段对话带过来：在左侧会话列表右键 →「导入到网页版」，再切到面板，它会出现在列表里。
 - 换模型：点输入框下方的模型胶囊 → 选供应商下的模型 → 需要的话在浮层底部选思考档位。选择记在浏览器本地，下次打开还是它。
 
