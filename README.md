@@ -39,6 +39,16 @@
 
 > 仓库名、包名、插件 id 都是 `dsh-chat-pro`；装过旧包（`chat-in-dsh`）的话先卸掉再装。
 
+### 从插件市场安装
+
+DSH 的市场本身不带索引，`插件 → 插件市场 → 发现` 只浏览你添加过的索引源。本仓库自带一个只收录本插件的索引：
+
+1. `插件 → 插件市场 → 发现`，点右上角「索引源」。
+2. 填 `https://raw.githubusercontent.com/ziui1008/dsh-chat-pro/main/market/index.json`，点「添加」。
+3. 列表里出现「DeepSeek 网页版面板」，点「安装」。
+
+索引格式是 DSH 的 format 1（`market/index.json`），安装源钉在具体 commit 上，不跟随分支漂移；改索引用 `node scripts/check-market-index.mjs` 先过一遍 DSH 自己的校验器。
+
 ## 使用
 
 - 点左侧「网页版」打开面板；想让聊天区更宽，点左上角按钮收起 DSH 的会话栏。

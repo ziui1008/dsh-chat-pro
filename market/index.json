@@ -1,0 +1,52 @@
+{
+  "format": 1,
+  "title": "dsh-chat-pro",
+  "description": {
+    "en": "A one-plugin index for dsh-chat-pro.",
+    "zh": "只收录 dsh-chat-pro 的索引。"
+  },
+  "metadata": {
+    "categories": {
+      "ui": { "title": { "en": "UI", "zh": "界面" } }
+    },
+    "labels": {
+      "chat": { "title": { "en": "Chat", "zh": "对话" } },
+      "offline-first": { "title": { "en": "Local storage", "zh": "本地存储" } }
+    },
+    "sortKeys": {}
+  },
+  "plugins": [
+    {
+      "name": "dsh-chat-pro",
+      "title": { "en": "DeepSeek Web Panel", "zh": "DeepSeek 网页版面板" },
+      "description": {
+        "en": "Hosts the official DeepSeek web chat in a DSH side panel, proxies requests with the DSH account, and switches between DSH providers, models and reasoning effort.",
+        "zh": "在 DSH 侧边面板里托管 DeepSeek 官方网页版对话，用 DSH 已登录的账户转发请求，并可切换 DSH 里的供应商、模型与思考档位。"
+      },
+      "icon": "https://raw.githubusercontent.com/ziui1008/dsh-chat-pro/main/icon.svg",
+      "author": "ziui1008",
+      "homepage": "https://github.com/ziui1008/dsh-chat-pro",
+      "repository": {
+        "url": "https://github.com/ziui1008/dsh-chat-pro"
+      },
+      "metadata": {
+        "category": "ui",
+        "keywords": ["deepseek", "deepseek-harness", "dsh", "dsh-plugin", "chat"],
+        "labels": ["chat", "offline-first"],
+        "sortKeys": {}
+      },
+      "versions": [
+        {
+          "version": "1.2.0",
+          "publishTimestamp": 1795226648,
+          "source": {
+            "type": "git",
+            "url": "https://github.com/ziui1008/dsh-chat-pro",
+            "commit": "f0ba06ea84f462f8a54258f8675229278d0908f4"
+          },
+          "engines": { "dsh": ">=0.2.2-rc.3" }
+        }
+      ]
+    }
+  ]
+}
