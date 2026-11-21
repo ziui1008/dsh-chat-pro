@@ -166,9 +166,12 @@ async function proxyFiles(ctx, config, req, res, pathname) {
  *
  * 面板在 DSH 自己的 origin 里加载，所以同源请求天然带着 DSH 的会话凭据；
  * 别的网页发过来的请求没有这个凭据，Origin 也对不上，会在这里被挡掉。
+ *
+ * 拿不到 `connection` 服务时（更老的 DSH 没有这个服务）只能放行：
+ * 没有可对照的会话体系，挡住反而会让面板整个不可用。
  * @returns {number|undefined} 拒绝时的 HTTP 状态码
  */
-function rejectWithoutSession(ctx, req) {
+export function rejectWithoutSession(ctx, req) {
   const connection = ctx.get('connection')
   if (connection === undefined) return undefined
   return connection.requestRejection(req)
@@ -234,7 +237,11 @@ export function createWebview(ctx, config, home) {
     // 没有 DSH 会话凭据、或从别的站点发起的请求，一律不进后面的路由。
     const rejection = rejectWithoutSession(ctx, req)
     if (rejection !== undefined) {
-      res.writeHead(rejection, { 'content-type': 'text/plain; charset=utf-8' })
+      // 被拒时请求体还没读，直接关连接，避免客户端继续往一个被丢弃的 socket 里写。
+      res.writeHead(rejection, {
+        'content-type': 'text/plain; charset=utf-8',
+        connection: 'close',
+      })
       res.end(rejection === 403 ? 'forbidden' : 'dsh web authentication required; reopen the URL printed by dsh web.')
       return
     }
