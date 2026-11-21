@@ -24,7 +24,7 @@
 ## 命令
 
 ```bash
-node --test test/protocol.test.js test/dsh-import.test.js test/llm-bridge.test.js test/llm-fetch.test.js test/llm-tools.test.js test/llm-loop.test.js test/llm-sanitize.test.js
+node --test test/protocol.test.js test/dsh-import.test.js test/dsh-import-paths.test.js test/llm-bridge.test.js test/llm-fetch.test.js test/llm-tools.test.js test/llm-loop.test.js test/llm-sanitize.test.js
 pwsh scripts/build-webview.ps1     # 克隆上游、打补丁、构建、同步 webview/dist
 ```
 
@@ -41,6 +41,7 @@ pwsh scripts/build-webview.ps1     # 克隆上游、打补丁、构建、同步 
 
 ## 验证
 
+- 准入：`/webchat` 下每个请求都先过 `ctx.connection.requestRejection(req)`；没有 DSH 会话凭据是 401，跨站 Origin 是 403。改路由时不要绕开这道检查。
 - `GET /webchat/api/self-test`：入口页、静态资源、一次真实生成，三项全绿。
 - 槽位：`main` / `sidebar.panellist` 有 `chat-demo`；会话菜单走 `contextMenus` 贡献，所以旧插槽 `sidebar.workspaces.session.menu.item` 应当是空的；`conversation.view` 里**不应**出现。
 - 菜单样式：会话右键菜单里的「导入到网页版」必须和置顶、重命名等原生条目等高同字号——新加菜单项一律用 `ctx.contextMenus.register`，不要往旧插槽塞自定义按钮。

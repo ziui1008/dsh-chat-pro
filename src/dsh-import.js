@@ -145,6 +145,9 @@ export function parseSessionLog(text, fallbackId) {
 
 /** 在 DSH 会话目录里找到某条会话的日志文件。 */
 export function findSessionFile(home, sessionId) {
+  const name = String(sessionId)
+  // 会话 id 由浏览器传进来，只接受单个目录名，`../` 之类的越界写法直接当作找不到。
+  if (!STAGED_ID.test(name)) return undefined
   const root = path.join(home, 'sessions')
   let workspaces = []
   try {
@@ -153,7 +156,7 @@ export function findSessionFile(home, sessionId) {
     return undefined
   }
   for (const workspace of workspaces) {
-    const dir = path.join(root, workspace.name, sessionId)
+    const dir = path.join(root, workspace.name, name)
     for (const candidate of ['session.v4.jsonl.zstd', 'session.v4.jsonl']) {
       const file = path.join(dir, candidate)
       if (fs.existsSync(file)) return { file, zstd: candidate.endsWith('.zstd') }
@@ -175,6 +178,14 @@ export function readDshSession(home, sessionId) {
 
 /** 暂存目录：宿主写，网页版取走。 */
 const stagingRoot = home => path.join(home, 'webchat-imports')
+
+/**
+ * 暂存文件名只允许会话 id 这个形状。
+ *
+ * 会话 id 来自 DSH 的会话日志，但确认删除时的 id 是浏览器传进来的，
+ * 直接拼进路径就能用 `../` 删掉暂存区以外的任意 `.json`。
+ */
+const STAGED_ID = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/u
 
 /** 把一条会话放进暂存区。 */
 export function stageImport(home, session) {
@@ -210,10 +221,12 @@ export function ackPending(home, ids) {
   const root = stagingRoot(home)
   const removed = []
   for (const id of ids) {
-    const file = path.join(root, `${id}.json`)
+    const name = String(id)
+    if (!STAGED_ID.test(name)) continue
+    const file = path.join(root, `${name}.json`)
     if (fs.existsSync(file)) {
       fs.unlinkSync(file)
-      removed.push(id)
+      removed.push(name)
     }
   }
   return removed

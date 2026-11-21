@@ -161,6 +161,19 @@ async function proxyFiles(ctx, config, req, res, pathname) {
   res.end(text)
 }
 
+/**
+ * 与 DSH 自己的 `/api` 走同一条准入检查。
+ *
+ * 面板在 DSH 自己的 origin 里加载，所以同源请求天然带着 DSH 的会话凭据；
+ * 别的网页发过来的请求没有这个凭据，Origin 也对不上，会在这里被挡掉。
+ * @returns {number|undefined} 拒绝时的 HTTP 状态码
+ */
+function rejectWithoutSession(ctx, req) {
+  const connection = ctx.get('connection')
+  if (connection === undefined) return undefined
+  return connection.requestRejection(req)
+}
+
 /** 自检：入口页、静态资源、一次真实生成。 */
 async function selfTest(ctx, config) {
   const checks = []
@@ -217,6 +230,14 @@ export function createWebview(ctx, config, home) {
     const { pathname } = url
     const method = (req.method ?? 'GET').toUpperCase()
     const isGet = method === 'GET' || method === 'HEAD'
+
+    // 没有 DSH 会话凭据、或从别的站点发起的请求，一律不进后面的路由。
+    const rejection = rejectWithoutSession(ctx, req)
+    if (rejection !== undefined) {
+      res.writeHead(rejection, { 'content-type': 'text/plain; charset=utf-8' })
+      res.end(rejection === 403 ? 'forbidden' : 'dsh web authentication required; reopen the URL printed by dsh web.')
+      return
+    }
 
     // ---- 从 DSH 一次性导入 ----
     if (pathname === '/webchat/api/import/stage' && method === 'POST') {
