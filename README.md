@@ -3,7 +3,7 @@
 把 DeepSeek 官网那套对话界面搬进 DeepSeek Harness 的左侧面板，并且让它能用上 DSH 里已经配好的模型。
 
 <p>
-  <img alt="version" src="https://img.shields.io/badge/version-1.1.2-2F6FEB?style=flat-square" />
+  <a href="https://www.npmjs.com/package/dsh-chat-pro"><img alt="npm" src="https://img.shields.io/npm/v/dsh-chat-pro?style=flat-square&color=2F6FEB" /></a>
   <a href="https://github.com/ziui1008/dsh-chat-pro/actions/workflows/test.yml"><img alt="test" src="https://github.com/ziui1008/dsh-chat-pro/actions/workflows/test.yml/badge.svg" /></a>
   <a href="LICENSE"><img alt="license" src="https://img.shields.io/badge/license-MIT-2EA043?style=flat-square" /></a>
   <a href="https://github.com/deepseek-ai/chat-demo"><img alt="upstream" src="https://img.shields.io/badge/upstream-chat--demo-555?style=flat-square" /></a>
@@ -34,10 +34,10 @@
 ## 安装
 
 1. 打开 DSH 左侧的「插件」页，点右上角「添加插件」。
-2. 填仓库地址 `https://github.com/ziui1008/dsh-chat-pro`，点「安装」。
+2. 填 `dsh-chat-pro`（npm 包名）或仓库地址 `https://github.com/ziui1008/dsh-chat-pro`，点「安装」。
 3. 装好后点「立即启用」，左侧面板列表里会多出「网页版」。
 
-> 仓库名、包名、插件 id 都是 `dsh-chat-pro`；装过旧包（`chat-in-dsh`）的话先卸掉再装。
+> 仓库名、包名、插件 id 都是 `dsh-chat-pro`；装过旧包（`chat-in-dsh`）的话先卸掉再装。npm 上的包只带宿主代码与构建好的前端，不含 `docs/`、`test/`、`scripts/`。
 
 ### 从插件市场安装
 
